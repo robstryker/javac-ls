@@ -1,0 +1,75 @@
+# Maven
+target/
+**/target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Eclipse
+.metadata/
+.recommenders/
+.sonarlint/
+.settings/
+.classpath
+.project
+**/.classpath
+**/.project
+**/.settings/
+bin/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VS Code
+.vscode/
+
+# Gradle
+.gradle/
+build/
+
+# Java
+*.class
+*.log
+*.ctxt
+.mtj.tmp/
+*.jar
+!felix.jar
+!**/bin/*.jar
+hs_err_pid*
+
+# OSGi
+*.index
+*.properties
+!felix-cache/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+
+# Package Files
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Workspace directory (default location)
+.javacls/
