@@ -19,6 +19,7 @@ import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.jsonrpc.MessageConsumer;
 import org.jboss.tools.javac.ls.api.JavacLSClient;
 import org.jboss.tools.javac.ls.api.SocketLauncher;
+import org.jboss.tools.javac.ls.server.model.WorkspaceModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +52,7 @@ public class JavacLsServerLauncher {
 	private ListenOnSocketRunnable socketRunnable;
 	private ServerSocket serverSocket;
 	protected String portString;
+	private WorkspaceModel workspaceModel;
 
 	public JavacLsServerLauncher(String portString) {
 		this.portString = portString;
@@ -59,6 +61,10 @@ public class JavacLsServerLauncher {
 
 	public List<JavacLSClient> getClients() {
 		return serverImpl.getClients();
+	}
+
+	public WorkspaceModel getWorkspaceModel() {
+		return workspaceModel;
 	}
 
 	public void launch() throws Exception {
@@ -78,6 +84,10 @@ public class JavacLsServerLauncher {
 		} else {
 			LOG.info("Using workspace directory: {}", workspacePath);
 		}
+
+		// Load workspace model
+		workspaceModel = new WorkspaceModel(workspaceDir);
+		LOG.info("Loaded workspace model with {} projects", workspaceModel.getProjectCount());
 
 		startListening(port, serverImpl);
 	}
