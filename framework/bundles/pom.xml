@@ -18,5 +18,6 @@
     <module>org.jboss.tools.javac.ls.launching</module>
     <module>org.jboss.tools.javac.ls.launching.java</module>
     <module>org.jboss.tools.javac.ls.server</module>
+    <module>org.jboss.tools.jdt.core.dom</module>
   </modules>
 </project>

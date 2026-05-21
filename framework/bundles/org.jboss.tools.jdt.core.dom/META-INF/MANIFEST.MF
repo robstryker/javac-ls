@@ -1,0 +1,8 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: JBoss Tools JDT Core DOM
+Bundle-SymbolicName: org.jboss.tools.jdt.core.dom
+Automatic-Module-Name: org.jboss.tools.jdt.core.dom
+Bundle-Version: 0.0.1.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Export-Package: org.eclipse.jdt.core.dom
