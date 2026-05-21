@@ -10,7 +10,7 @@ The base protocol of LSP can be found [here](https://microsoft.github.io/languag
 
 ## Install
 
-This client / server code can be found at: https://github.com/redhat-developer/javac-ls
+This client / server code can be found at: https://github.com/nb-javac-shaded/javac-ls
 
 ## Get the code
 
@@ -19,26 +19,34 @@ and then clone your fork:
 
     $ git clone git@github.com:<you>/javac-ls
     $ cd javac-ls
-    $ git remote add upstream git://github.com/redhat-developer/javac-ls
+    $ git remote add upstream https://github.com/nb-javac-shaded/javac-ls
 
-At any time, you can pull changes from the upstream and merge them onto your master:
+At any time, you can pull changes from the upstream and merge them onto your main branch:
 
-    $ git checkout master               # switches to the 'master' branch
-    $ git pull upstream master          # fetches all 'upstream' changes and merges 'upstream/master' onto your 'master' branch
+    $ git checkout main                 # switches to the 'main' branch
+    $ git pull upstream main            # fetches all 'upstream' changes and merges 'upstream/main' onto your 'main' branch
     $ git push origin                   # pushes all the updates to your fork, which should be in-sync with 'upstream'
 
-The general idea is to keep your 'master' branch in-sync with the
-'upstream/master'.
+The general idea is to keep your 'main' branch in-sync with the
+'upstream/main'.
 
 ## Building The client and server
 
 This command will run the build:
 
+    $ ./build.sh
+
+Or with tests:
+
+    $ ./build-with-tests.sh
+
+If you prefer to use Maven directly:
+
     $ MAVEN_OPTS="-Djdk.xml.maxGeneralEntitySizeLimit=0 -Djdk.xml.totalEntitySizeLimit=0 -Djdk.xml.entityExpansionLimit=0" mvn clean verify
 
-If you just want to check if things compiles/builds you can run:
+To skip tests:
 
-    $ MAVEN_OPTS="-Djdk.xml.maxGeneralEntitySizeLimit=0 -Djdk.xml.totalEntitySizeLimit=0 -Djdk.xml.entityExpansionLimit=0" mvn clean verify -DskipTest=true
+    $ ./build.sh -DskipTests=true
 
 But *do not* push changes without having the new and existing unit tests pass!
 
