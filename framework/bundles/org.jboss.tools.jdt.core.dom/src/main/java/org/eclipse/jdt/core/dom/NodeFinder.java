@@ -13,17 +13,6 @@
  *******************************************************************************/
 package org.eclipse.jdt.core.dom;
 
-import org.eclipse.jdt.core.IBuffer;
-import org.eclipse.jdt.core.IJavaProject;
-import org.eclipse.jdt.core.ISourceRange;
-import org.eclipse.jdt.core.ITypeRoot;
-import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.core.ToolFactory;
-import org.eclipse.jdt.core.compiler.IScanner;
-import org.eclipse.jdt.core.compiler.ITerminalSymbols;
-import org.eclipse.jdt.core.compiler.InvalidInputException;
-
 /**
  * For a given selection range, finds the covered node and the covering node.
  *
@@ -119,8 +108,103 @@ public final class NodeFinder {
 	 * @return the innermost node that exactly matches the selection, or the first node that contains the selection
 	 * @see #perform(ASTNode, int, int)
 	 */
-	public static ASTNode perform(ASTNode root, ISourceRange range) {
-		return perform(root, range.getOffset(), range.getLength());
+//	public static ASTNode perform(ASTNode root, ISourceRange range) {
+//		return perform(root, range.getOffset(), range.getLength());
+//	}
+
+	/**
+	 * Check if a string contains only whitespace and comments.
+	 *
+	 * @param text the text to check
+	 * @return true if the text contains only whitespace and comments, false otherwise
+	 */
+	private static boolean isOnlyWhitespaceAndComments(String text) {
+		int i = 0;
+		while (i < text.length()) {
+			char c = text.charAt(i);
+
+			// Skip whitespace
+			if (Character.isWhitespace(c)) {
+				i++;
+				continue;
+			}
+
+			// Check for line comment
+			if (c == '/' && i + 1 < text.length() && text.charAt(i + 1) == '/') {
+				// Skip to end of line
+				i += 2;
+				while (i < text.length() && text.charAt(i) != '\n' && text.charAt(i) != '\r') {
+					i++;
+				}
+				continue;
+			}
+
+			// Check for block comment (including javadoc)
+			if (c == '/' && i + 1 < text.length() && text.charAt(i + 1) == '*') {
+				// Skip to */
+				i += 2;
+				while (i + 1 < text.length()) {
+					if (text.charAt(i) == '*' && text.charAt(i + 1) == '/') {
+						i += 2;
+						break;
+					}
+					i++;
+				}
+				continue;
+			}
+
+			// Found non-whitespace, non-comment content
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Maps a selection to an ASTNode, where the selection is given by a start and a length.
+	 * The result node is determined as follows:
+	 * <ul>
+	 *   <li>If {@link #getCoveredNode()} doesn't find a node, returns <code>null</code>.</li>
+	 *   <li>Otherwise, iff the selection only contains the covered node and optionally some whitespace or comments
+	 *       on either side of the node, returns the node.</li>
+	 *   <li>Otherwise, returns the {@link #getCoveringNode() covering} node.</li>
+	 * </ul>
+	 *
+	 * @param root the root node from which the search starts
+	 * @param start the start of the selection
+	 * @param length the length of the selection
+	 * @param sourceText the source text of the compilation unit
+	 *
+	 * @return the result node
+	 */
+	public static ASTNode perform(ASTNode root, int start, int length, String sourceText) {
+		NodeFinder finder = new NodeFinder(root, start, length);
+		ASTNode result = finder.getCoveredNode();
+		if (result == null)
+			return null;
+
+		int nodeStart = result.getStartPosition();
+		if (start <= nodeStart && ((nodeStart + result.getLength()) <= (start + length))) {
+			try {
+				// Check text before the node
+				String beforeNode = sourceText.substring(start, nodeStart);
+				if (!isOnlyWhitespaceAndComments(beforeNode)) {
+					return finder.getCoveringNode();
+				}
+
+				// Check text after the node
+				int nodeEnd = nodeStart + result.getLength();
+				String afterNode = sourceText.substring(nodeEnd, start + length);
+				if (!isOnlyWhitespaceAndComments(afterNode)) {
+					return finder.getCoveringNode();
+				}
+
+				return result;
+			} catch (IndexOutOfBoundsException e) {
+				// https://bugs.eclipse.org/bugs/show_bug.cgi?id=305001
+				return null;
+			}
+		}
+		return finder.getCoveringNode();
 	}
 
 	/**
@@ -141,46 +225,15 @@ public final class NodeFinder {
 	 * @return the result node
 	 * @throws JavaModelException if an error occurs in the Java model
 	 */
-	public static ASTNode perform(ASTNode root, int start, int length, ITypeRoot source) throws JavaModelException {
-		NodeFinder finder = new NodeFinder(root, start, length);
-		ASTNode result= finder.getCoveredNode();
-		if (result == null)
-			return null;
-		int nodeStart= result.getStartPosition();
-		if (start <= nodeStart && ((nodeStart + result.getLength()) <= (start + length))) {
-			IBuffer buffer= source.getBuffer();
-			if (buffer != null) {
-				IScanner scanner;
-		        IJavaProject project = source.getJavaProject();
-		        if (project != null) {
-		            String sourceLevel = project.getOption(JavaCore.COMPILER_SOURCE, true);
-		            String complianceLevel = project.getOption(JavaCore.COMPILER_COMPLIANCE, true);
-		            scanner = ToolFactory.createScanner(false, false, false, sourceLevel, complianceLevel);
-		        } else {
-		        	scanner= ToolFactory.createScanner(false, false, false, false);
-		        }
-				try {
-					scanner.setSource(buffer.getText(start, length).toCharArray());
-					int token= scanner.getNextToken();
-					if (token != ITerminalSymbols.TokenNameEOF) {
-						int tStart= scanner.getCurrentTokenStartPosition();
-						if (tStart == result.getStartPosition() - start) {
-							scanner.resetTo(tStart + result.getLength(), length - 1);
-							token= scanner.getNextToken();
-							if (token == ITerminalSymbols.TokenNameEOF)
-								return result;
-						}
-					}
-				} catch (InvalidInputException e) {
-					// ignore
-				} catch (IndexOutOfBoundsException e) {
-					// https://bugs.eclipse.org/bugs/show_bug.cgi?id=305001
-					return null;
-				}
-			}
-		}
-		return finder.getCoveringNode();
-	}
+//	public static ASTNode perform(ASTNode root, int start, int length, ITypeRoot source) throws JavaModelException {
+//		IBuffer buffer = source.getBuffer();
+//		if (buffer != null) {
+//			String sourceText = buffer.getContents();
+//			return perform(root, start, length, sourceText);
+//		}
+//		// Fallback to simple version if no buffer available
+//		return perform(root, start, length);
+//	}
 	private final ASTNode fCoveringNode;
 	private final ASTNode fCoveredNode;
 

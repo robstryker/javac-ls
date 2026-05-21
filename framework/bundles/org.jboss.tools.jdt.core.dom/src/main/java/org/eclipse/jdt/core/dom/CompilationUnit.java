@@ -18,15 +18,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.ITypeRoot;
+
 import org.eclipse.jdt.core.compiler.IProblem;
-import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
-import org.eclipse.jdt.internal.compiler.parser.Scanner;
-import org.eclipse.jdt.internal.compiler.util.Util;
-import org.eclipse.jface.text.IDocument;
-import org.eclipse.text.edits.TextEdit;
 
 /**
  * Java compilation unit AST node type. This is the type of the root of an AST.
@@ -161,7 +154,7 @@ public class CompilationUnit extends ASTNode {
 	 * The Java type root (an <code>org.eclipse.jdt.core.ICompilationUnit</code> or an <code>org.eclipse.jdt.core.IClassFile</code>)
 	 * this compilation unit was created from, or <code>null</code> if it was not created from a Java type root.
 	 */
-	private ITypeRoot typeRoot = null;
+//	private ITypeRoot typeRoot = null;
 
 	/**
 	 * The list of import declarations in textual order order;
@@ -178,7 +171,7 @@ public class CompilationUnit extends ASTNode {
 	 * For example, the source string <code>A\nB\nC</code> has
 	 * line end table {1, 3} (if \n is one character).
 	 */
-	private int[] lineEndTable = Util.EMPTY_INT_ARRAY;
+	private int[] lineEndTable = DOMConstants.EMPTY_INT_ARRAY;
 
 	/**
 	 * Messages reported by the compiler during parsing or name resolution.
@@ -538,9 +531,9 @@ public class CompilationUnit extends ASTNode {
 	 * @since 3.1
 	 * @see #getTypeRoot()
 	 */
-	public IJavaElement getJavaElement() {
-		return this.typeRoot;
-	}
+//	public IJavaElement getJavaElement() {
+//		return this.typeRoot;
+//	}
 
 	/**
 	 * Returns the list of messages reported by the compiler during the parsing
@@ -690,9 +683,9 @@ public class CompilationUnit extends ASTNode {
 	 * @return the Java type root this compilation unit was created from, or <code>null</code> if none
 	 * @since 3.3
 	 */
-	public ITypeRoot getTypeRoot() {
-		return this.typeRoot;
-	}
+//	public ITypeRoot getTypeRoot() {
+//		return this.typeRoot;
+//	}
 
 	/**
 	 * Returns the live list of nodes for the import declarations of this
@@ -744,15 +737,14 @@ public class CompilationUnit extends ASTNode {
 	}
 
 	/**
-	 * Initializes the internal comment mapper with the given
-	 * scanner.
+	 * Initializes the internal comment mapper with the given source.
 	 *
-	 * @param scanner the scanner
+	 * @param source the source code
 	 * @since 3.0
 	 */
-	void initCommentMapper(Scanner scanner) {
+	void initCommentMapper(char[] source) {
 		this.commentMapper = new DefaultCommentMapper(this.optionalCommentTable);
-		this.commentMapper.initialize(this, scanner);
+		this.commentMapper.initialize(this, source);
 	}
 
 	@Override
@@ -941,9 +933,9 @@ public class CompilationUnit extends ASTNode {
 	 * @see ASTRewrite
 	 * @since 3.0
 	 */
-	public void recordModifications() {
-		getAST().recordModifications(this);
-	}
+//	public void recordModifications() {
+//		getAST().recordModifications(this);
+//	}
 
 	/**
 	 * Converts all modifications recorded for this compilation
@@ -981,9 +973,9 @@ public class CompilationUnit extends ASTNode {
 	 * @see #recordModifications()
 	 * @since 3.0
 	 */
-	public TextEdit rewrite(IDocument document, Map options) {
-		return getAST().rewrite(document, options);
-	}
+//	public TextEdit rewrite(IDocument document, Map options) {
+//		return getAST().rewrite(document, options);
+//	}
 
 	/**
 	 * Sets the list of the comments encountered while parsing
@@ -1030,9 +1022,9 @@ public class CompilationUnit extends ASTNode {
 	 *
 	 * @param typeRoot the Java type root this compilation unit was created from
 	 */
-	void setTypeRoot(ITypeRoot typeRoot) {
-		this.typeRoot = typeRoot;
-	}
+//	void setTypeRoot(ITypeRoot typeRoot) {
+//		this.typeRoot = typeRoot;
+//	}
 
 	/**
 	 * Sets the line end table for this compilation unit.

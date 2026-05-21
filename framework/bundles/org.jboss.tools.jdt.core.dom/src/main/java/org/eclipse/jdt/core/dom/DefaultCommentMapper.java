@@ -13,12 +13,6 @@
  *******************************************************************************/
 package org.eclipse.jdt.core.dom;
 
-import org.eclipse.jdt.core.compiler.CharOperation;
-import org.eclipse.jdt.core.compiler.InvalidInputException;
-import org.eclipse.jdt.internal.compiler.parser.Scanner;
-import org.eclipse.jdt.internal.compiler.parser.TerminalToken;
-import org.eclipse.jdt.internal.compiler.util.Util;
-
 /**
  * Internal class for associating comments with AST nodes.
  *
@@ -26,7 +20,8 @@ import org.eclipse.jdt.internal.compiler.util.Util;
  */
 class DefaultCommentMapper {
 	Comment[] comments;
-	Scanner scanner;
+	char[] source;
+	int[] lineEnds;
 
 	// extended nodes storage
 	int leadingPtr;
@@ -144,9 +139,114 @@ class DefaultCommentMapper {
 	 * @return int
 	 */
 	public final int getLineNumber(int position, int[] lineRange) {
-		int[] lineEnds = this.scanner.lineEnds;
-		int length = lineEnds.length;
-		return Util.getLineNumber(position, lineEnds, (lineRange[0] > length ? length : lineRange[0]) -1, (lineRange[1] > length ? length : lineRange[1]) - 1);
+		if (this.lineEnds == null || this.lineEnds.length == 0) {
+			return 1;
+		}
+		int length = this.lineEnds.length;
+		int min = (lineRange[0] > length ? length : lineRange[0]) - 1;
+		int max = (lineRange[1] > length ? length : lineRange[1]) - 1;
+
+		if (min < 0) min = 0;
+		if (max >= length) max = length - 1;
+		if (max < min) return 1;
+
+		// Binary search for line number
+		if (position < 0) return 1;
+		if (position > this.lineEnds[max]) return max + 2;
+
+		int bottom = min, top = max;
+		while (bottom <= top) {
+			int middle = (bottom + top) / 2;
+			if (position < this.lineEnds[middle]) {
+				top = middle - 1;
+			} else if (middle < length - 1 && position >= this.lineEnds[middle + 1]) {
+				bottom = middle + 1;
+			} else {
+				return middle + 2; // line numbers are 1-based
+			}
+		}
+		return 1;
+	}
+
+	/*
+	 * Check if the source range contains only whitespace.
+	 */
+	private boolean isOnlyWhitespace(int start, int end) {
+		if (start >= end || start < 0 || end > this.source.length) {
+			return true;
+		}
+		for (int i = start; i < end; i++) {
+			if (!DOMConstants.isWhitespace(this.source[i])) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/*
+	 * Count newlines in the source range.
+	 */
+	private int countNewlines(int start, int end) {
+		if (start >= end || start < 0 || end > this.source.length) {
+			return 0;
+		}
+		int count = 0;
+		for (int i = start; i < end; i++) {
+			if (this.source[i] == '\n') {
+				count++;
+			}
+		}
+		return count;
+	}
+
+	/*
+	 * Find the position of the last non-whitespace character in the range.
+	 * Returns start-1 if only whitespace is found.
+	 */
+	private int findLastNonWhitespace(int start, int end) {
+		if (start >= end || start < 0 || end > this.source.length) {
+			return start - 1;
+		}
+		int lastNonWs = start - 1;
+		for (int i = start; i < end; i++) {
+			if (!DOMConstants.isWhitespace(this.source[i])) {
+				lastNonWs = i;
+			}
+		}
+		return lastNonWs;
+	}
+
+	/*
+	 * Compute line ending positions from source.
+	 */
+	private static int[] computeLineEnds(char[] source) {
+		if (source == null || source.length == 0) {
+			return new int[0];
+		}
+
+		// Count lines first
+		int lineCount = 0;
+		for (int i = 0; i < source.length; i++) {
+			if (source[i] == '\n') {
+				lineCount++;
+			}
+		}
+
+		// Allocate array
+		int[] lineEnds = new int[lineCount + 1];
+		int lineIndex = 0;
+
+		// Fill line ends
+		for (int i = 0; i < source.length; i++) {
+			if (source[i] == '\n') {
+				lineEnds[lineIndex++] = i;
+			}
+		}
+
+		// Last line end is the end of source
+		lineEnds[lineIndex] = source.length - 1;
+
+		return lineEnds;
 	}
 
 	/*
@@ -219,10 +319,8 @@ class DefaultCommentMapper {
 	/*
 	 * Initialize leading and trailing comments tables in whole nodes hierarchy of a compilation
 	 * unit.
-	 * Scanner is necessary to scan between nodes and comments and verify if there's
-	 * nothing else than white spaces.
 	 */
-	void initialize(CompilationUnit unit, Scanner sc) {
+	void initialize(CompilationUnit unit, char[] source) {
 
 		// Init array pointers
 		this.leadingPtr = -1;
@@ -238,9 +336,9 @@ class DefaultCommentMapper {
 			return;
 		}
 
-		// Init scanner and start ranges computing
-		this.scanner = sc;
-		this.scanner.tokenizeWhiteSpace = true;
+		// Init source and line ends for scanning
+		this.source = source;
+		this.lineEnds = computeLineEnds(source);
 
 		// Start unit visit
 		DefaultASTVisitor commentVisitor = new CommentMapperVisitor();
@@ -273,8 +371,9 @@ class DefaultCommentMapper {
 			}
 		}
 
-		// Release scanner as it's only used during unit visit
-		this.scanner = null;
+		// Release source as it's only used during unit visit
+		this.source = null;
+		this.lineEnds = null;
 	}
 
 	/**
@@ -327,28 +426,17 @@ class DefaultCommentMapper {
 				// stop search on condition 1) and 2)
 				break;
 			} else if ((end+1) < previousStart) { // may be equals => then no scan is necessary
-				this.scanner.resetTo(end+1, previousStart);
-				try {
-					TerminalToken token = this.scanner.getNextToken();
-					if (token != TerminalToken.TokenNameWHITESPACE || this.scanner.currentPosition != previousStart) {
-						// stop search on condition 3)
-						// if first comment fails, then there's no extended position in fact
-						if (idx == endIdx) {
-							return nodeStart;
-						}
-						break;
+				// Verify that there's only whitespace between comment end and previous start
+				if (!isOnlyWhitespace(end+1, previousStart)) {
+					// stop search on condition 3)
+					// if first comment fails, then there's no extended position in fact
+					if (idx == endIdx) {
+						return nodeStart;
 					}
-				} catch (InvalidInputException e) {
-					// Should not happen, but return no extended position...
-					return nodeStart;
+					break;
 				}
 				// verify that there's no more than one line between node/comments
-				char[] gap = this.scanner.getCurrentIdentifierSource();
-				int nbrLine = 0;
-				int pos = -1;
-				while ((pos=CharOperation.indexOf('\n', gap,pos+1)) >= 0) {
-					nbrLine++;
-				}
+				int nbrLine = countNewlines(end+1, previousStart);
 				if (nbrLine > 1) {
 					// stop search on condition 4)
 					break;
@@ -362,16 +450,10 @@ class DefaultCommentMapper {
 			// Verify that there's no token on the same line before first leading comment
 			int commentStart = this.comments[startIdx].getStartPosition();
 			if (previousEnd < commentStart && previousEndLine != nodeStartLine) {
-				int lastTokenEnd = previousEnd;
-				this.scanner.resetTo(previousEnd, commentStart);
-				try {
-					while (this.scanner.currentPosition < commentStart) {
-						if (this.scanner.getNextToken() != TerminalToken.TokenNameWHITESPACE) {
-							lastTokenEnd =  this.scanner.getCurrentTokenEndPosition();
-						}
-					}
-				} catch (InvalidInputException e) {
-					// do nothing
+				// Find the last non-whitespace character before the comment
+				int lastTokenEnd = findLastNonWhitespace(previousEnd, commentStart);
+				if (lastTokenEnd < previousEnd) {
+					lastTokenEnd = previousEnd;
 				}
 				int lastTokenLine = getLineNumber(lastTokenEnd, parentLineRange);
 				int length = this.comments.length;
@@ -464,29 +546,18 @@ class DefaultCommentMapper {
 				// stop search on condition 1)
 				break;
 			} else if (previousEnd < commentStart) {
-				this.scanner.resetTo(previousEnd, commentStart);
-				try {
-					TerminalToken token = this.scanner.getNextToken();
-					if (token != TerminalToken.TokenNameWHITESPACE || this.scanner.currentPosition != commentStart) {
-						// stop search on condition 2)
-						// if first index fails, then there's no extended position in fact...
-						if (idx == startIdx) {
-							return nodeEnd;
-						}
-						// otherwise we get the last index of trailing comment => break
-						break;
+				// Verify that there's only whitespace between node and comment
+				if (!isOnlyWhitespace(previousEnd, commentStart)) {
+					// stop search on condition 2)
+					// if first index fails, then there's no extended position in fact...
+					if (idx == startIdx) {
+						return nodeEnd;
 					}
-				} catch (InvalidInputException e) {
-					// Should not happen, but return no extended position...
-					return nodeEnd;
+					// otherwise we get the last index of trailing comment => break
+					break;
 				}
 				// verify that there's no more than one line between node/comments
-				char[] gap = this.scanner.getCurrentIdentifierSource();
-				int nbrLine = 0;
-				int pos = -1;
-				while ((pos=CharOperation.indexOf('\n', gap,pos+1)) >= 0) {
-					nbrLine++;
-				}
+				int nbrLine = countNewlines(previousEnd, commentStart);
 				if (nbrLine > 1) {
 					// stop search on condition 3)
 					break;
@@ -583,7 +654,8 @@ class DefaultCommentMapper {
 			}
 
 			// Compute leading comments for current node
-			int[] previousLineRange = this.siblingPtr > -1 ? this.parentLineRange[this.siblingPtr] : new int[] {1, DefaultCommentMapper.this.scanner.linePtr+1};
+			int maxLine = DefaultCommentMapper.this.lineEnds != null ? DefaultCommentMapper.this.lineEnds.length : 1;
+			int[] previousLineRange = this.siblingPtr > -1 ? this.parentLineRange[this.siblingPtr] : new int[] {1, maxLine};
 			try {
 				storeLeadingComments(node, previousEnd, previousLineRange);
 			} catch (Exception ex) {

@@ -14,10 +14,6 @@
 
 package org.eclipse.jdt.core.dom;
 
-import org.eclipse.jdt.core.compiler.InvalidInputException;
-import org.eclipse.jdt.internal.compiler.parser.Scanner;
-import org.eclipse.jdt.internal.compiler.parser.TerminalToken;
-
 /**
  * Abstract base class of AST nodes that represent statements.
  * There are many kinds of statements.
@@ -132,32 +128,8 @@ public abstract class Statement extends ASTNode {
 	 */
 	public void setLeadingComment(String comment) {
 		if (comment != null) {
-			char[] source = comment.toCharArray();
-			Scanner scanner = this.ast.scanner;
-			scanner.resetTo(0, source.length);
-			scanner.setSource(source);
-			try {
-				TerminalToken token;
-				boolean onlyOneComment = false;
-				while ((token = scanner.getNextToken()) != TerminalToken.TokenNameEOF) {
-					switch(token) {
-						case TokenNameCOMMENT_BLOCK :
-						case TokenNameCOMMENT_JAVADOC :
-						case TokenNameCOMMENT_LINE :
-							if (onlyOneComment) {
-								throw new IllegalArgumentException();
-							}
-							onlyOneComment = true;
-							break;
-						default:
-							onlyOneComment = false;
-					}
-				}
-				if (!onlyOneComment) {
-					throw new IllegalArgumentException();
-				}
-			} catch (InvalidInputException e) {
-				throw new IllegalArgumentException(e);
+			if (!DOMConstants.isValidComment(comment)) {
+				throw new IllegalArgumentException("Invalid comment: " + comment);
 			}
 		}
 		// we do not consider the obsolete comment as a structureal property

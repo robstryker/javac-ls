@@ -16,11 +16,6 @@ package org.eclipse.jdt.core.dom;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.eclipse.jdt.core.compiler.InvalidInputException;
-import org.eclipse.jdt.internal.compiler.parser.Scanner;
-import org.eclipse.jdt.internal.compiler.parser.ScannerHelper;
-import org.eclipse.jdt.internal.compiler.parser.TerminalToken;
-import org.eclipse.jdt.internal.compiler.util.Util;
 
 /**
  * Character literal nodes.
@@ -160,20 +155,8 @@ public class CharacterLiteral extends Expression {
 		if (value == null) {
 			throw new IllegalArgumentException();
 		}
-		Scanner scanner = this.ast.scanner;
-		char[] source = value.toCharArray();
-		scanner.setSource(source);
-		scanner.resetTo(0, source.length);
-		try {
-			TerminalToken tokenType = scanner.getNextToken();
-			switch(tokenType) {
-				case TokenNameCharacterLiteral:
-					break;
-				default:
-					throw new IllegalArgumentException();
-			}
-		} catch(InvalidInputException e) {
-			throw new IllegalArgumentException();
+		if (!DOMConstants.isValidCharacterLiteral(value)) {
+			throw new IllegalArgumentException("Invalid character literal: " + value);
 		}
 		preValueChange(ESCAPED_VALUE_PROPERTY);
 		this.escapedValue = value;
@@ -205,29 +188,17 @@ public class CharacterLiteral extends Expression {
 	 * @exception IllegalArgumentException if the literal value cannot be converted
 	 */
 	public char charValue() {
-		// create a new local scanner to allow concurrent use
-		Scanner scanner = new Scanner(
-				this.ast.scanner.tokenizeComments,
-				this.ast.scanner.tokenizeWhiteSpace,
-				this.ast.scanner.checkNonExternalizedStringLiterals,
-				this.ast.scanner.sourceLevel,
-				this.ast.scanner.complianceLevel,
-				this.ast.scanner.taskTags,
-				this.ast.scanner.taskPriorities,
-				this.ast.scanner.isTaskCaseSensitive,
-				this.ast.scanner.previewEnabled);
-
 		char[] source = this.escapedValue.toCharArray();
-		scanner.setSource(source);
-		scanner.resetTo(0, source.length);
-		int firstChar = scanner.getNextChar();
-		int secondChar = scanner.getNextChar();
+		DOMConstants.CharReader reader = new DOMConstants.CharReader(source);
+
+		int firstChar = reader.getNextChar();
+		int secondChar = reader.getNextChar();
 
 		if (firstChar == -1 || firstChar != '\'') {
 			throw new IllegalArgumentException("illegal character literal");//$NON-NLS-1$
 		}
 		char value = (char) secondChar;
-		int nextChar = scanner.getNextChar();
+		int nextChar = reader.getNextChar();
 		if (secondChar == '\\') {
 			if (nextChar == -1) {
 				throw new IllegalArgumentException("illegal character literal");//$NON-NLS-1$
@@ -258,38 +229,34 @@ public class CharacterLiteral extends Expression {
 					value = '\\';
 					break;
 				default : //octal (well-formed: ended by a ' )
-					try {
-						if (ScannerHelper.isDigit((char) nextChar)) {
-							int number = ScannerHelper.getNumericValue((char) nextChar);
-							nextChar = scanner.getNextChar();
+					if (DOMConstants.isDigit((char) nextChar)) {
+						int number = DOMConstants.getNumericValue((char) nextChar);
+						nextChar = reader.getNextChar();
+						if (nextChar == -1) {
+							throw new IllegalArgumentException("illegal character literal");//$NON-NLS-1$
+						}
+						if (nextChar != '\'') {
+							if (!DOMConstants.isDigit((char) nextChar)) {
+								throw new IllegalArgumentException("illegal character literal");//$NON-NLS-1$
+							}
+							number = (number * 8) + DOMConstants.getNumericValue((char) nextChar);
+							nextChar = reader.getNextChar();
 							if (nextChar == -1) {
 								throw new IllegalArgumentException("illegal character literal");//$NON-NLS-1$
 							}
 							if (nextChar != '\'') {
-								if (!ScannerHelper.isDigit((char) nextChar)) {
+								if (!DOMConstants.isDigit((char) nextChar)) {
 									throw new IllegalArgumentException("illegal character literal");//$NON-NLS-1$
 								}
-								number = (number * 8) + ScannerHelper.getNumericValue((char) nextChar);
-								nextChar = scanner.getNextChar();
-								if (nextChar == -1) {
-									throw new IllegalArgumentException("illegal character literal");//$NON-NLS-1$
-								}
-								if (nextChar != '\'') {
-									if (!ScannerHelper.isDigit((char) nextChar)) {
-										throw new IllegalArgumentException("illegal character literal");//$NON-NLS-1$
-									}
-									number = (number * 8) + ScannerHelper.getNumericValue((char) nextChar);
-								}
+								number = (number * 8) + DOMConstants.getNumericValue((char) nextChar);
 							}
-							return (char) number;
-						} else {
-							throw new IllegalArgumentException("illegal character literal");//$NON-NLS-1$
 						}
-					} catch (InvalidInputException e) {
-						throw new IllegalArgumentException("illegal character literal", e);//$NON-NLS-1$
+						return (char) number;
+					} else {
+						throw new IllegalArgumentException("illegal character literal");//$NON-NLS-1$
 					}
 			}
-			nextChar = scanner.getNextChar();
+			nextChar = reader.getNextChar();
 			if (nextChar == -1) {
 				throw new IllegalArgumentException("illegal character literal");//$NON-NLS-1$
 			}
@@ -316,7 +283,7 @@ public class CharacterLiteral extends Expression {
 		StringBuilder b = new StringBuilder(3);
 
 		b.append('\''); // opening delimiter
-		Util.appendEscapedChar(b, value, false);
+		DOMConstants.appendEscapedChar(b, value, false);
 		b.append('\''); // closing delimiter
 		setEscapedValue(b.toString());
 	}

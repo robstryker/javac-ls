@@ -16,9 +16,6 @@ package org.eclipse.jdt.core.dom;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.eclipse.jdt.core.compiler.InvalidInputException;
-import org.eclipse.jdt.internal.compiler.parser.Scanner;
-import org.eclipse.jdt.internal.compiler.parser.TerminalToken;
 
 /**
  * Number literal nodes.
@@ -149,40 +146,8 @@ public class NumberLiteral extends Expression {
 		if (token == null || token.length() == 0) {
 			throw new IllegalArgumentException();
 		}
-		Scanner scanner = this.ast.scanner;
-		char[] source = token.toCharArray();
-		scanner.setSource(source);
-		scanner.resetTo(0, source.length);
-		scanner.tokenizeComments = false;
-		scanner.tokenizeWhiteSpace = false;
-		try {
-			TerminalToken tokenType = scanner.getNextToken();
-			switch(tokenType) {
-				case TokenNameDoubleLiteral:
-				case TokenNameIntegerLiteral:
-				case TokenNameFloatingPointLiteral:
-				case TokenNameLongLiteral:
-					break;
-				case TokenNameMINUS :
-					tokenType = scanner.getNextToken();
-					switch(tokenType) {
-						case TokenNameDoubleLiteral:
-						case TokenNameIntegerLiteral:
-						case TokenNameFloatingPointLiteral:
-						case TokenNameLongLiteral:
-							break;
-						default:
-							throw new IllegalArgumentException("Invalid number literal : >" + token + "<"); //$NON-NLS-1$//$NON-NLS-2$
-					}
-					break;
-				default:
-					throw new IllegalArgumentException("Invalid number literal : >" + token + "<");//$NON-NLS-1$//$NON-NLS-2$
-			}
-		} catch(InvalidInputException e) {
-			throw new IllegalArgumentException();
-		} finally {
-			scanner.tokenizeComments = true;
-			scanner.tokenizeWhiteSpace = true;
+		if (!DOMConstants.isValidNumberLiteral(token)) {
+			throw new IllegalArgumentException("Invalid number literal : >" + token + "<");//$NON-NLS-1$//$NON-NLS-2$
 		}
 		preValueChange(TOKEN_PROPERTY);
 		this.tokenValue = token;

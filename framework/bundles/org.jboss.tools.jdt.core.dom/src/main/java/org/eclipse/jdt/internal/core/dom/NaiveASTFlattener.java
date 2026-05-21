@@ -16,7 +16,6 @@ package org.eclipse.jdt.internal.core.dom;
 import java.util.Iterator;
 import java.util.List;
 import org.eclipse.jdt.core.dom.*;
-import org.eclipse.jdt.internal.compiler.parser.ScannerHelper;
 import org.eclipse.jdt.internal.core.dom.util.DOMASTUtil;
 
 /**
@@ -1820,7 +1819,7 @@ public class NaiveASTFlattener extends ASTVisitor {
 			boolean currentIncludesWhiteSpace = false;
 			if (e instanceof TextElement) {
 				String text = ((TextElement) e).getText();
-				if (text.length() > 0 && ScannerHelper.isWhitespace(text.charAt(0))) {
+				if (text.length() > 0 && DOMConstants.isWhitespace(text.charAt(0))) {
 					currentIncludesWhiteSpace = true; // workaround for https://bugs.eclipse.org/403735
 				}
 			}

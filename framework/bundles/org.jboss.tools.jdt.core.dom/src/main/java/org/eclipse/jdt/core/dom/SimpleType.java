@@ -241,7 +241,7 @@ public class SimpleType extends AnnotatableType {
 	@Override
 	public boolean isVar() {
 		unsupportedBelow10();
-		if (Long.compare(this.ast.scanner.complianceLevel, ClassFileConstants.JDK10) < 0)
+		if (Long.compare(this.ast.complianceLevel, DOMConstants.JDK10) < 0)
 			return false;
 		if (this.typeName == null) getName();
 		String qName = this.typeName.getFullyQualifiedName();

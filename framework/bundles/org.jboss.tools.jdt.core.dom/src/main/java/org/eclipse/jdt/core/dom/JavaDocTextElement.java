@@ -16,7 +16,6 @@ package org.eclipse.jdt.core.dom;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.eclipse.jdt.internal.compiler.util.Util;
 
 /**
  * AST node for a text element within a doc comment.
@@ -141,7 +140,7 @@ public final class JavaDocTextElement extends AbstractTextElement {
 	@Override
 	int memSize() {
 		int size = BASE_NODE_SIZE + 1 * 4;
-		if (this.text != Util.EMPTY_STRING) {
+		if (this.text != DOMConstants.EMPTY_STRING) {
 			// everything but our empty string costs
 			size += stringSize(this.text);
 		}

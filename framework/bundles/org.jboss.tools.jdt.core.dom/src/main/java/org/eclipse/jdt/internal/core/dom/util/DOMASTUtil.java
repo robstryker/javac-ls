@@ -14,7 +14,7 @@
 
 package org.eclipse.jdt.internal.core.dom.util;
 
-import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaCoreConstants;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.Modifier;
@@ -204,11 +204,11 @@ public class DOMASTUtil {
 		}
 	}
 
-	private static final String[] AST_COMPLIANCE_MAP = {"-1","-1",JavaCore.VERSION_1_2, JavaCore.VERSION_1_3, JavaCore.VERSION_1_7, //$NON-NLS-1$ //$NON-NLS-2$
-			JavaCore.VERSION_1_7, JavaCore.VERSION_1_7, JavaCore.VERSION_1_7, JavaCore.VERSION_1_8, JavaCore.VERSION_9, JavaCore.VERSION_10,
-			JavaCore.VERSION_11, JavaCore.VERSION_12, JavaCore.VERSION_13, JavaCore.VERSION_14, JavaCore.VERSION_15, JavaCore.VERSION_16, JavaCore.VERSION_17, JavaCore.VERSION_18,
-			JavaCore.VERSION_19, JavaCore.VERSION_20, JavaCore.VERSION_21, JavaCore.VERSION_22, JavaCore.VERSION_23, JavaCore.VERSION_24,
-			JavaCore.VERSION_25, JavaCore.VERSION_26};
+	private static final String[] AST_COMPLIANCE_MAP = {"-1","-1",JavaCoreConstants.VERSION_1_2, JavaCoreConstants.VERSION_1_3, JavaCoreConstants.VERSION_1_7, //$NON-NLS-1$ //$NON-NLS-2$
+			JavaCoreConstants.VERSION_1_7, JavaCoreConstants.VERSION_1_7, JavaCoreConstants.VERSION_1_7, JavaCoreConstants.VERSION_1_8, JavaCoreConstants.VERSION_9, JavaCoreConstants.VERSION_10,
+			JavaCoreConstants.VERSION_11, JavaCoreConstants.VERSION_12, JavaCoreConstants.VERSION_13, JavaCoreConstants.VERSION_14, JavaCoreConstants.VERSION_15, JavaCoreConstants.VERSION_16, JavaCoreConstants.VERSION_17, JavaCoreConstants.VERSION_18,
+			JavaCoreConstants.VERSION_19, JavaCoreConstants.VERSION_20, JavaCoreConstants.VERSION_21, JavaCoreConstants.VERSION_22, JavaCoreConstants.VERSION_23, JavaCoreConstants.VERSION_24,
+			JavaCoreConstants.VERSION_25, JavaCoreConstants.VERSION_26};
 
 	/**
 	 * Calculates the JavaCore Option value string corresponding to the input ast level.
@@ -217,7 +217,7 @@ public class DOMASTUtil {
 	 * @return JavaCore Option value string corresponding to the ast level
 	 */
 	public static String getCompliance(int astLevel) {
-		if (!AST.getAllVersions().contains(astLevel)) return JavaCore.latestSupportedJavaVersion();
+		if (!AST.getAllVersions().contains(astLevel)) return JavaCoreConstants.latestSupportedJavaVersion();
 		return AST_COMPLIANCE_MAP[astLevel];
 	}
 

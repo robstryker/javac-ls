@@ -16,10 +16,6 @@ package org.eclipse.jdt.core.dom;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.eclipse.jdt.core.compiler.InvalidInputException;
-import org.eclipse.jdt.internal.compiler.parser.Scanner;
-import org.eclipse.jdt.internal.compiler.parser.TerminalToken;
-import org.eclipse.jdt.internal.compiler.util.Util;
 
 /**
  * String literal nodes.
@@ -162,20 +158,8 @@ public class StringLiteral extends Expression {
 		if (token == null) {
 			throw new IllegalArgumentException("Token cannot be null"); //$NON-NLS-1$
 		}
-		Scanner scanner = this.ast.scanner;
-		char[] source = token.toCharArray();
-		scanner.setSource(source);
-		scanner.resetTo(0, source.length);
-		try {
-			TerminalToken tokenType = scanner.getNextToken();
-			switch(tokenType) {
-				case TokenNameStringLiteral:
-					break;
-				default:
-					throw new IllegalArgumentException("Invalid string literal : >" + token + "<"); //$NON-NLS-1$//$NON-NLS-2$
-			}
-		} catch(InvalidInputException e) {
-			throw new IllegalArgumentException("Invalid string literal : >" + token + "<");//$NON-NLS-1$//$NON-NLS-2$
+		if (!DOMConstants.isValidStringLiteral(token)) {
+			throw new IllegalArgumentException("Invalid string literal : >" + token + "<"); //$NON-NLS-1$//$NON-NLS-2$
 		}
 		preValueChange(ESCAPED_VALUE_PROPERTY);
 		this.escapedValue = token;
@@ -215,33 +199,7 @@ public class StringLiteral extends Expression {
 		if (len < 2 || s.charAt(0) != '\"' || s.charAt(len-1) != '\"' ) {
 			throw new IllegalArgumentException();
 		}
-
-		// create a new local scanner to allow concurrent use
-		Scanner scanner = new Scanner(
-				this.ast.scanner.tokenizeComments,
-				this.ast.scanner.tokenizeWhiteSpace,
-				this.ast.scanner.checkNonExternalizedStringLiterals,
-				this.ast.scanner.sourceLevel,
-				this.ast.scanner.complianceLevel,
-				this.ast.scanner.taskTags,
-				this.ast.scanner.taskPriorities,
-				this.ast.scanner.isTaskCaseSensitive,
-				this.ast.scanner.previewEnabled);
-
-		char[] source = s.toCharArray();
-		scanner.setSource(source);
-		scanner.resetTo(0, source.length);
-		try {
-			TerminalToken tokenType = scanner.getNextToken();
-			switch(tokenType) {
-				case TokenNameStringLiteral:
-					return scanner.getCurrentStringLiteral();
-				default:
-					throw new IllegalArgumentException("tokenType: " + tokenType); //$NON-NLS-1$
-			}
-		} catch(InvalidInputException e) {
-			throw new IllegalArgumentException(e);
-		}
+		return DOMConstants.parseStringLiteral(s);
 	}
 
 	/**
@@ -273,7 +231,7 @@ public class StringLiteral extends Expression {
 		b.append("\""); // opening delimiter //$NON-NLS-1$
 		for (int i = 0; i < len; i++) {
 			char c = value.charAt(i);
-			Util.appendEscapedChar(b, c, true);
+			DOMConstants.appendEscapedChar(b, c, true);
 		}
 		b.append("\""); // closing delimiter //$NON-NLS-1$
 		setEscapedValue(b.toString());

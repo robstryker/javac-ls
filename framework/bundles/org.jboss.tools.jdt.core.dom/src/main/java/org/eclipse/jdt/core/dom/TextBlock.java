@@ -16,11 +16,6 @@ package org.eclipse.jdt.core.dom;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.eclipse.jdt.core.compiler.CharOperation;
-import org.eclipse.jdt.core.compiler.InvalidInputException;
-import org.eclipse.jdt.internal.compiler.parser.Scanner;
-import org.eclipse.jdt.internal.compiler.parser.ScannerHelper;
-import org.eclipse.jdt.internal.compiler.parser.TerminalToken;
 
 /**
  * TextBlock  AST node type.
@@ -174,20 +169,8 @@ public class TextBlock extends Expression {
 		if (token == null) {
 			throw new IllegalArgumentException("Token cannot be null"); //$NON-NLS-1$
 		}
-		Scanner scanner = this.ast.scanner;
-		char[] source = token.toCharArray();
-		scanner.setSource(source);
-		scanner.resetTo(0, source.length);
-		try {
-			TerminalToken tokenType = scanner.getNextToken();
-			switch(tokenType) {
-				case TokenNameTextBlock:
-					break;
-				default:
-					throw new IllegalArgumentException("Invalid Text Block : >" + token + "<"); //$NON-NLS-1$//$NON-NLS-2$
-			}
-		} catch(InvalidInputException e) {
-			throw new IllegalArgumentException("Invalid Text Block : >" + token + "<");//$NON-NLS-1$//$NON-NLS-2$
+		if (!DOMConstants.isValidTextBlock(token)) {
+			throw new IllegalArgumentException("Invalid Text Block : >" + token + "<"); //$NON-NLS-1$//$NON-NLS-2$
 		}
 		preValueChange(ESCAPED_VALUE_PROPERTY);
 		this.escapedValue = token;
@@ -235,7 +218,7 @@ public class TextBlock extends Expression {
 		int start = -1;
 		loop: for (int i = 3; i < len; i++) {
 			char c = escaped[i];
-			if (ScannerHelper.isWhitespace(c)) {
+			if (DOMConstants.isWhitespace(c)) {
 				switch (c) {
 					case 10 : /* \ u000a: LINE FEED               */
 					case 13 : /* \ u000d: CARRIAGE RETURN         */
@@ -252,7 +235,7 @@ public class TextBlock extends Expression {
 			throw new IllegalArgumentException();
 		}
 		return new String(
-				CharOperation.subarray(escaped, start, len - 3)
+				DOMConstants.subarray(escaped, start, len - 3)
 				);
 	}
 

@@ -16,9 +16,6 @@ package org.eclipse.jdt.core.dom;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.eclipse.jdt.core.compiler.InvalidInputException;
-import org.eclipse.jdt.internal.compiler.parser.Scanner;
-import org.eclipse.jdt.internal.compiler.parser.TerminalToken;
 
 /**
  * AST node for a Javadoc-style doc comment.
@@ -268,30 +265,8 @@ public class Javadoc extends Comment {
 		if (docComment == null) {
 			throw new IllegalArgumentException();
 		}
-		char[] source = docComment.toCharArray();
-		Scanner scanner = this.ast.scanner;
-		scanner.resetTo(0, source.length);
-		scanner.setSource(source);
-		try {
-			TerminalToken token;
-			boolean onlyOneComment = false;
-			while ((token = scanner.getNextToken()) != TerminalToken.TokenNameEOF) {
-				switch(token) {
-					case TokenNameCOMMENT_JAVADOC :
-						if (onlyOneComment) {
-							throw new IllegalArgumentException();
-						}
-						onlyOneComment = true;
-						break;
-					default:
-						onlyOneComment = false;
-				}
-			}
-			if (!onlyOneComment) {
-				throw new IllegalArgumentException();
-			}
-		} catch (InvalidInputException e) {
-			throw new IllegalArgumentException(e);
+		if (!DOMConstants.isValidJavadoc(docComment)) {
+			throw new IllegalArgumentException("Invalid Javadoc comment: " + docComment);
 		}
 		preValueChange(COMMENT_PROPERTY);
 		this.comment = docComment;

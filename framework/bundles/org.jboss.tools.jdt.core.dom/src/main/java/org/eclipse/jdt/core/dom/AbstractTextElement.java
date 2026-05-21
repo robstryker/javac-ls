@@ -14,8 +14,6 @@
 
 package org.eclipse.jdt.core.dom;
 
-import org.eclipse.jdt.internal.compiler.util.Util;
-
 /**
  * AST node for a text element within a doc comment.
  * <pre>
@@ -42,7 +40,7 @@ public abstract class AbstractTextElement extends ASTNode implements IDocElement
 	/**
 	 * The text element; defaults to the empty string.
 	 */
-	String text = Util.EMPTY_STRING;
+	String text = DOMConstants.EMPTY_STRING;
 
 
 	/**

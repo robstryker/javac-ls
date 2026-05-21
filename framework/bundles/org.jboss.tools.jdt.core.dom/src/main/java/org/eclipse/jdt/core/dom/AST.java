@@ -24,16 +24,8 @@ import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.jdt.core.IClassFile;
-import org.eclipse.jdt.core.ICompilationUnit;
-import org.eclipse.jdt.core.IJavaProject;
-import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
-import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
-import org.eclipse.jdt.internal.compiler.parser.Scanner;
-import org.eclipse.jface.text.IDocument;
-import org.eclipse.text.edits.TextEdit;
+
+import org.eclipse.jdt.core.JavaCoreConstants;
 
 /**
  * Umbrella owner and abstract syntax tree node factory.
@@ -522,7 +514,6 @@ public final class AST {
 	 * Specification, Java SE 25 Edition (JLS25).
 	 * JLS25 is a superset of all earlier versions of the
 	 * Java language, and the JLS25 API can be used to manipulate
-	 * programs written in all versions of the Java language
 	 * up to and including Java SE 25(aka JDK 25).
 	 * </p>
 	 *
@@ -628,6 +619,41 @@ public final class AST {
 		temp.removeAll(UNSUPPORTED_VERSIONS);
 		SUPPORTED_VERSIONS = Collections.unmodifiableList(temp);
 	}
+	
+	/**
+	 * Constant indicating that a reconcile operation should not return an AST.
+	 * @since 3.0
+	 */
+	public static final int NO_AST = 0;
+
+	/**
+	 * Constant indicating that a reconcile operation should recompute the problems
+	 * even if the source hasn't changed.
+	 * @since 3.3
+	 */
+	public static final int FORCE_PROBLEM_DETECTION = 0x01;
+
+	/**
+	 * Constant indicating that a reconcile operation should enable the statements recovery.
+	 * @see ASTParser#setStatementsRecovery(boolean)
+	 * @since 3.3
+	 */
+	public static final int ENABLE_STATEMENTS_RECOVERY = 0x02;
+
+	/**
+	 * Constant indicating that a reconcile operation should enable the bindings recovery
+	 * @see ASTParser#setBindingsRecovery(boolean)
+	 * @see IBinding#isRecovered()
+	 * @since 3.3
+	 */
+	public static final int ENABLE_BINDINGS_RECOVERY = 0x04;
+
+	/**
+	 * Constant indicating that a reconcile operation could ignore to parse the method bodies.
+	 * @see ASTParser#setIgnoreMethodBodies(boolean)
+	 * @since 3.5.2
+	 */
+	public static final int IGNORE_METHOD_BODIES = 0x08;
 
 
 	/*
@@ -658,17 +684,17 @@ public final class AST {
 	 * @deprecated Use org.eclipse.jdt.core.dom.AST.convertCompilationUnit(int, CompilationUnitDeclaration, Map, boolean, CompilationUnit, int, IProgressMonitor) instead
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
-	public static CompilationUnit convertCompilationUnit(
-			int level,
-			org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration compilationUnitDeclaration,
-			char[] source,
-			Map options,
-			boolean isResolved,
-			org.eclipse.jdt.internal.core.CompilationUnit workingCopy,
-			int reconcileFlags,
-			IProgressMonitor monitor) {
-		return null;
-	}
+//	public static CompilationUnit convertCompilationUnit(
+//			int level,
+//			org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration compilationUnitDeclaration,
+//			char[] source,
+//			Map options,
+//			boolean isResolved,
+//			org.eclipse.jdt.internal.core.CompilationUnit workingCopy,
+//			int reconcileFlags,
+//			IProgressMonitor monitor) {
+//		return null;
+//	}
 
 	/**
 	 * Internal method.
@@ -688,52 +714,52 @@ public final class AST {
 	 * @since 3.4
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
-	public static CompilationUnit convertCompilationUnit(
-		int level,
-		org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration compilationUnitDeclaration,
-		Map options,
-		boolean isResolved,
-		org.eclipse.jdt.internal.core.CompilationUnit workingCopy,
-		int reconcileFlags,
-		IProgressMonitor monitor) {
-
-		ASTConverter converter = new ASTConverter(options, isResolved, monitor);
-		AST ast = AST.newAST(level, JavaCore.ENABLED.equals(options.get(JavaCore.COMPILER_PB_ENABLE_PREVIEW_FEATURES)));
-		String sourceModeSetting = (String) options.get(JavaCore.COMPILER_SOURCE);
-		long sourceLevel = CompilerOptions.versionToJdkLevel(sourceModeSetting);
-		if (sourceLevel == 0) {
-			// unknown sourceModeSetting
-			sourceLevel = CompilerOptions.getFirstSupportedJdkLevel();
-		}
-		ast.scanner.sourceLevel = sourceLevel;
-		String compliance = (String) options.get(JavaCore.COMPILER_COMPLIANCE);
-		long complianceLevel = CompilerOptions.versionToJdkLevel(compliance);
-		if (complianceLevel == 0) {
-			// unknown sourceModeSetting
-			complianceLevel = sourceLevel;
-		}
-		ast.scanner.complianceLevel = complianceLevel;
-		ast.scanner.previewEnabled = JavaCore.ENABLED.equals(options.get(JavaCore.COMPILER_PB_ENABLE_PREVIEW_FEATURES));
-		int savedDefaultNodeFlag = ast.getDefaultNodeFlag();
-		ast.setDefaultNodeFlag(ASTNode.ORIGINAL);
-		BindingResolver resolver = null;
-		if (isResolved) {
-			resolver = new DefaultBindingResolver(compilationUnitDeclaration.scope, workingCopy.owner, new DefaultBindingResolver.BindingTables(), false, true);
-			((DefaultBindingResolver) resolver).isRecoveringBindings = (reconcileFlags & ICompilationUnit.ENABLE_BINDINGS_RECOVERY) != 0;
-			ast.setFlag(AST.RESOLVED_BINDINGS);
-		} else {
-			resolver = new BindingResolver();
-		}
-		ast.setFlag(reconcileFlags);
-		ast.setBindingResolver(resolver);
-		converter.setAST(ast);
-
-		CompilationUnit unit = converter.convert(compilationUnitDeclaration, workingCopy.getContents());
-		unit.setLineEndTable(compilationUnitDeclaration.compilationResult.getLineSeparatorPositions());
-		unit.setTypeRoot(workingCopy.originalFromClone());
-		ast.setDefaultNodeFlag(savedDefaultNodeFlag);
-		return unit;
-	}
+//	public static CompilationUnit convertCompilationUnit(
+//		int level,
+//		org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration compilationUnitDeclaration,
+//		Map options,
+//		boolean isResolved,
+//		org.eclipse.jdt.internal.core.CompilationUnit workingCopy,
+//		int reconcileFlags,
+//		IProgressMonitor monitor) {
+//
+//		ASTConverter converter = new ASTConverter(options, isResolved, monitor);
+//		AST ast = AST.newAST(level, JavaCoreConstants.ENABLED.equals(options.get(JavaCoreConstants.COMPILER_PB_ENABLE_PREVIEW_FEATURES)));
+//		String sourceModeSetting = (String) options.get(JavaCoreConstants.COMPILER_SOURCE);
+//		long sourceLevel = CompilerOptions.versionToJdkLevel(sourceModeSetting);
+//		if (sourceLevel == 0) {
+//			// unknown sourceModeSetting
+//			sourceLevel = DOMConstants.JDK8;
+//		}
+//		ast.scanner.sourceLevel = sourceLevel;
+//		String compliance = (String) options.get(JavaCoreConstants.COMPILER_COMPLIANCE);
+//		long complianceLevel = CompilerOptions.versionToJdkLevel(compliance);
+//		if (complianceLevel == 0) {
+//			// unknown sourceModeSetting
+//			complianceLevel = sourceLevel;
+//		}
+//		ast.scanner.complianceLevel = complianceLevel;
+//		ast.scanner.previewEnabled = JavaCoreConstants.ENABLED.equals(options.get(JavaCoreConstants.COMPILER_PB_ENABLE_PREVIEW_FEATURES));
+//		int savedDefaultNodeFlag = ast.getDefaultNodeFlag();
+//		ast.setDefaultNodeFlag(ASTNode.ORIGINAL);
+//		AbstractBindingResolver resolver = null;
+//		if (isResolved) {
+//			resolver = new DefaultBindingResolver(compilationUnitDeclaration.scope, workingCopy.owner, new DefaultBindingResolver.BindingTables(), false, true);
+//			((DefaultBindingResolver) resolver).isRecoveringBindings = (reconcileFlags & ICompilationUnit.ENABLE_BINDINGS_RECOVERY) != 0;
+//			ast.setFlag(AST.RESOLVED_BINDINGS);
+//		} else {
+//			resolver = new NoOpBindingResolver();
+//		}
+//		ast.setFlag(reconcileFlags);
+//		ast.setBindingResolver(resolver);
+//		converter.setAST(ast);
+//
+//		CompilationUnit unit = converter.convert(compilationUnitDeclaration, workingCopy.getContents());
+//		unit.setLineEndTable(compilationUnitDeclaration.compilationResult.getLineSeparatorPositions());
+//		unit.setTypeRoot(workingCopy.originalFromClone());
+//		ast.setDefaultNodeFlag(savedDefaultNodeFlag);
+//		return unit;
+//	}
 
 	/**
 	 * Creates a new Java abstract syntax tree
@@ -842,15 +868,15 @@ public final class AST {
 	 * @since 2.0
 	 * @deprecated Use {@link ASTParser} instead.
 	 */
-	public static CompilationUnit parseCompilationUnit(char[] source) {
-		if (source == null) {
-			throw new IllegalArgumentException();
-		}
-		ASTParser c = ASTParser.newParser(AST.JLS2);
-		c.setSource(source);
-		ASTNode result = c.createAST(null);
-		return (CompilationUnit) result;
-	}
+//	public static CompilationUnit parseCompilationUnit(char[] source) {
+//		if (source == null) {
+//			throw new IllegalArgumentException();
+//		}
+//		ASTParser c = ASTParser.newParser(AST.JLS2);
+//		c.setSource(source);
+//		ASTNode result = c.createAST(null);
+//		return (CompilationUnit) result;
+//	}
 
 	/**
 	 * Parses the given string as the hypothetical contents of the named
@@ -919,22 +945,22 @@ public final class AST {
 	 * @since 2.0
 	 * @deprecated Use {@link ASTParser} instead.
 	 */
-	public static CompilationUnit parseCompilationUnit(
-		char[] source,
-		String unitName,
-		IJavaProject project) {
-
-		if (source == null) {
-			throw new IllegalArgumentException();
-		}
-		ASTParser astParser = ASTParser.newParser(AST.JLS2);
-		astParser.setSource(source);
-		astParser.setUnitName(unitName);
-		astParser.setProject(project);
-		astParser.setResolveBindings(project != null);
-		ASTNode result = astParser.createAST(null);
-		return (CompilationUnit) result;
-	}
+//	public static CompilationUnit parseCompilationUnit(
+//		char[] source,
+//		String unitName,
+//		IJavaProject project) {
+//
+//		if (source == null) {
+//			throw new IllegalArgumentException();
+//		}
+//		ASTParser astParser = ASTParser.newParser(AST.JLS2);
+//		astParser.setSource(source);
+//		astParser.setUnitName(unitName);
+//		astParser.setProject(project);
+//		astParser.setResolveBindings(project != null);
+//		ASTNode result = astParser.createAST(null);
+//		return (CompilationUnit) result;
+//	}
 
 	/**
 	 * Parses the source string corresponding to the given Java class file
@@ -995,24 +1021,24 @@ public final class AST {
 	 * @since 2.1
 	 * @deprecated Use {@link ASTParser} instead.
 	 */
-	public static CompilationUnit parseCompilationUnit(
-		IClassFile classFile,
-		boolean resolveBindings) {
-
-		if (classFile == null) {
-			throw new IllegalArgumentException();
-		}
-		try {
-			ASTParser c = ASTParser.newParser(AST.JLS2);
-			c.setSource(classFile);
-			c.setResolveBindings(resolveBindings);
-			ASTNode result = c.createAST(null);
-			return (CompilationUnit) result;
-		} catch (IllegalStateException e) {
-			// convert ASTParser's complaints into old form
-			throw new IllegalArgumentException(e);
-		}
-	}
+//	public static CompilationUnit parseCompilationUnit(
+//		IClassFile classFile,
+//		boolean resolveBindings) {
+//
+//		if (classFile == null) {
+//			throw new IllegalArgumentException();
+//		}
+//		try {
+//			ASTParser c = ASTParser.newParser(AST.JLS2);
+//			c.setSource(classFile);
+//			c.setResolveBindings(resolveBindings);
+//			ASTNode result = c.createAST(null);
+//			return (CompilationUnit) result;
+//		} catch (IllegalStateException e) {
+//			// convert ASTParser's complaints into old form
+//			throw new IllegalArgumentException(e);
+//		}
+//	}
 
 	/**
 	 * Parses the source string of the given Java model compilation unit element
@@ -1072,21 +1098,21 @@ public final class AST {
 	 * @since 2.0
 	 * @deprecated Use {@link ASTParser} instead.
 	 */
-	public static CompilationUnit parseCompilationUnit(
-		ICompilationUnit unit,
-		boolean resolveBindings) {
-
-		try {
-			ASTParser c = ASTParser.newParser(AST.JLS2);
-			c.setSource(unit);
-			c.setResolveBindings(resolveBindings);
-			ASTNode result = c.createAST(null);
-			return (CompilationUnit) result;
-		} catch (IllegalStateException e) {
-			// convert ASTParser's complaints into old form
-			throw new IllegalArgumentException(e);
-		}
-	}
+//	public static CompilationUnit parseCompilationUnit(
+//		ICompilationUnit unit,
+//		boolean resolveBindings) {
+//
+//		try {
+//			ASTParser c = ASTParser.newParser(AST.JLS2);
+//			c.setSource(unit);
+//			c.setResolveBindings(resolveBindings);
+//			ASTNode result = c.createAST(null);
+//			return (CompilationUnit) result;
+//		} catch (IllegalStateException e) {
+//			// convert ASTParser's complaints into old form
+//			throw new IllegalArgumentException(e);
+//		}
+//	}
 
 	/**
 	 * Level of AST API supported by this AST.
@@ -1150,18 +1176,23 @@ public final class AST {
 	 * The binding resolver for this AST. Initially a binding resolver that
 	 * does not resolve names at all.
 	 */
-	private BindingResolver resolver = new BindingResolver();
+	private AbstractBindingResolver resolver = new NoOpBindingResolver();
 
 	/**
 	 * Internal ast rewriter used to record ast modification when record mode is enabled.
 	 */
-	InternalASTRewrite rewriter;
+	//InternalASTRewrite rewriter;
 
 	/**
 	 * Java Scanner used to validate preconditions for the creation of specific nodes
 	 * like CharacterLiteral, NumberLiteral, StringLiteral or SimpleName.
 	 */
-	Scanner scanner;
+	//Scanner scanner;
+
+	/**
+	 * Compliance level for this AST (e.g., JDK1_8, JDK10, etc.)
+	 */
+	long complianceLevel;
 
 	/**
 	 * new Object[] {this}
@@ -1178,7 +1209,7 @@ public final class AST {
 	 */
 	@Deprecated
 	public AST() {
-		this(JavaCore.getDefaultOptions());
+		this(JavaCoreConstants.getDefaultOptions());
 	}
 
 	/**
@@ -1196,45 +1227,48 @@ public final class AST {
 		switch(level) {
 			case JLS8_INTERNAL :
 				this.apiLevel = level;
+				this.complianceLevel = DOMConstants.JDK1_8;
 				// initialize a scanner
-				this.scanner = new Scanner(
-						true /*comment*/,
-						true /*whitespace*/,
-						false /*nls*/,
-						ClassFileConstants.JDK1_8 /*sourceLevel*/,
-						ClassFileConstants.JDK1_8 /*complianceLevel*/,
-						null/*taskTag*/,
-						null/*taskPriorities*/,
-						true/*taskCaseSensitive*/,
-						false/*isPreviewEnabled*/);
+//				this.scanner = new Scanner(
+//						true /*comment*/,
+//						true /*whitespace*/,
+//						false /*nls*/,
+//						DOMConstants.JDK1_8 /*sourceLevel*/,
+//						DOMConstants.JDK1_8 /*complianceLevel*/,
+//						null/*taskTag*/,
+//						null/*taskPriorities*/,
+//						true/*taskCaseSensitive*/,
+//						false/*isPreviewEnabled*/);
 				break;
 			case JLS9_INTERNAL :
 				this.apiLevel = level;
+				this.complianceLevel = DOMConstants.JDK9;
 				// initialize a scanner
-				this.scanner = new Scanner(
-						true /*comment*/,
-						true /*whitespace*/,
-						false /*nls*/,
-						ClassFileConstants.JDK9   /*sourceLevel*/,
-						ClassFileConstants.JDK9 /*complianceLevel*/,
-						null/*taskTag*/,
-						null/*taskPriorities*/,
-						true/*taskCaseSensitive*/,
-						false/*isPreviewEnabled*/);
+//				this.scanner = new Scanner(
+//						true /*comment*/,
+//						true /*whitespace*/,
+//						false /*nls*/,
+//						DOMConstants.JDK9   /*sourceLevel*/,
+//						DOMConstants.JDK9 /*complianceLevel*/,
+//						null/*taskTag*/,
+//						null/*taskPriorities*/,
+//						true/*taskCaseSensitive*/,
+//						false/*isPreviewEnabled*/);
 				break;
 			case JLS10_INTERNAL :
 				this.apiLevel = level;
+				this.complianceLevel = DOMConstants.JDK10;
 				// initialize a scanner
-				this.scanner = new Scanner(
-						true /*comment*/,
-						true /*whitespace*/,
-						false /*nls*/,
-						ClassFileConstants.JDK10   /*sourceLevel*/,
-						ClassFileConstants.JDK10 /*complianceLevel*/,
-						null/*taskTag*/,
-						null/*taskPriorities*/,
-						true/*taskCaseSensitive*/,
-						false/*isPreviewEnabled*/);
+//				this.scanner = new Scanner(
+//						true /*comment*/,
+//						true /*whitespace*/,
+//						false /*nls*/,
+//						DOMConstants.JDK10   /*sourceLevel*/,
+//						DOMConstants.JDK10 /*complianceLevel*/,
+//						null/*taskTag*/,
+//						null/*taskPriorities*/,
+//						true/*taskCaseSensitive*/,
+//						false/*isPreviewEnabled*/);
 				break;
 			default:
 				if (!ALL_VERSIONS.contains(level)) {
@@ -1242,19 +1276,20 @@ public final class AST {
 				}
 				this.apiLevel = level;
 				// initialize a scanner
-				// As long as the AST levels and ClassFileConstants.MAJOR_VERSION grow simultaneously,
+				// As long as the AST levels and DOMConstants.MAJOR_VERSION grow simultaneously,
 				// we can use the offset of +44 to compute the Major version from the given AST Level
-				long compliance = ClassFileConstants.getComplianceLevelForJavaVersion(level + 44);
-				this.scanner = new Scanner(
-						true /*comment*/,
-						true /*whitespace*/,
-						false /*nls*/,
-						compliance /*sourceLevel*/,
-						compliance /*complianceLevel*/,
-						null/*taskTag*/,
-						null/*taskPriorities*/,
-						true/*taskCaseSensitive*/,
-						false/*isPreviewEnabled*/);
+				long compliance = DOMConstants.getComplianceLevelForJavaVersion(level + 44);
+				this.complianceLevel = compliance;
+//				this.scanner = new Scanner(
+//						true /*comment*/,
+//						true /*whitespace*/,
+//						false /*nls*/,
+//						compliance /*sourceLevel*/,
+//						compliance /*complianceLevel*/,
+//						null/*taskTag*/,
+//						null/*taskPriorities*/,
+//						true/*taskCaseSensitive*/,
+//						false/*isPreviewEnabled*/);
 				break;
 		}
 	}
@@ -1284,81 +1319,82 @@ public final class AST {
 	 * @see JavaCore#getDefaultOptions()
 	 */
 	public AST(Map options) {
-		this(apiLevelMap.get(options.get(JavaCore.COMPILER_SOURCE)),
-				JavaCore.ENABLED.equals(options.get(JavaCore.COMPILER_PB_ENABLE_PREVIEW_FEATURES)));
+		this(apiLevelMap.get(options.get(JavaCoreConstants.COMPILER_SOURCE)),
+				JavaCoreConstants.ENABLED.equals(options.get(JavaCoreConstants.COMPILER_PB_ENABLE_PREVIEW_FEATURES)));
 
-		long sourceLevel = AST.jdkLevelMap.get(options.get(JavaCore.COMPILER_SOURCE));
+		long sourceLevel = AST.jdkLevelMap.get(options.get(JavaCoreConstants.COMPILER_SOURCE));
 		long complianceLevel = sourceLevel;
-		this.scanner = new Scanner(
-			true /*comment*/,
-			true /*whitespace*/,
-			false /*nls*/,
-			sourceLevel /*sourceLevel*/,
-			complianceLevel /*complianceLevel*/,
-			null/*taskTag*/,
-			null/*taskPriorities*/,
-			true/*taskCaseSensitive*/,
-			this.previewEnabled /* isPreviewEnabled*/);
+		this.complianceLevel = complianceLevel;
+//		this.scanner = new Scanner(
+//			true /*comment*/,
+//			true /*whitespace*/,
+//			false /*nls*/,
+//			sourceLevel /*sourceLevel*/,
+//			complianceLevel /*complianceLevel*/,
+//			null/*taskTag*/,
+//			null/*taskPriorities*/,
+//			true/*taskCaseSensitive*/,
+//			this.previewEnabled /* isPreviewEnabled*/);
 	}
 
 	private static Map<String, Long> getLevelMapTable() {
         Map<String, Long> t = new HashMap<>();
-        t.put(null, CompilerOptions.getFirstSupportedJdkLevel());
-        t.put(JavaCore.VERSION_1_2, CompilerOptions.getFirstSupportedJdkLevel());
-        t.put(JavaCore.VERSION_1_3, CompilerOptions.getFirstSupportedJdkLevel());
-        t.put(JavaCore.VERSION_1_4, CompilerOptions.getFirstSupportedJdkLevel());
-        t.put(JavaCore.VERSION_1_5, CompilerOptions.getFirstSupportedJdkLevel());
-        t.put(JavaCore.VERSION_1_6, CompilerOptions.getFirstSupportedJdkLevel());
-        t.put(JavaCore.VERSION_1_7, CompilerOptions.getFirstSupportedJdkLevel());
-        t.put(JavaCore.VERSION_1_8, CompilerOptions.getFirstSupportedJdkLevel());
-        t.put(JavaCore.VERSION_9, ClassFileConstants.JDK9);
-        t.put(JavaCore.VERSION_10, ClassFileConstants.JDK10);
-        t.put(JavaCore.VERSION_11, ClassFileConstants.JDK11);
-        t.put(JavaCore.VERSION_12, ClassFileConstants.JDK12);
-        t.put(JavaCore.VERSION_13, ClassFileConstants.JDK13);
-        t.put(JavaCore.VERSION_14, ClassFileConstants.JDK14);
-        t.put(JavaCore.VERSION_15, ClassFileConstants.JDK15);
-        t.put(JavaCore.VERSION_16, ClassFileConstants.JDK16);
-        t.put(JavaCore.VERSION_17, ClassFileConstants.JDK17);
-        t.put(JavaCore.VERSION_18, ClassFileConstants.JDK18);
-        t.put(JavaCore.VERSION_19, ClassFileConstants.JDK19);
-        t.put(JavaCore.VERSION_20, ClassFileConstants.JDK20);
-        t.put(JavaCore.VERSION_21, ClassFileConstants.JDK21);
-        t.put(JavaCore.VERSION_22, ClassFileConstants.JDK22);
-        t.put(JavaCore.VERSION_23, ClassFileConstants.JDK23);
-        t.put(JavaCore.VERSION_24, ClassFileConstants.JDK24);
-        t.put(JavaCore.VERSION_25, ClassFileConstants.JDK25);
-        t.put(JavaCore.VERSION_26, ClassFileConstants.JDK26);
+        t.put(null, DOMConstants.JDK1_8);
+        t.put(JavaCoreConstants.VERSION_1_2, DOMConstants.JDK1_8);
+        t.put(JavaCoreConstants.VERSION_1_3, DOMConstants.JDK1_8);
+        t.put(JavaCoreConstants.VERSION_1_4, DOMConstants.JDK1_8);
+        t.put(JavaCoreConstants.VERSION_1_5, DOMConstants.JDK1_8);
+        t.put(JavaCoreConstants.VERSION_1_6, DOMConstants.JDK1_8);
+        t.put(JavaCoreConstants.VERSION_1_7, DOMConstants.JDK1_8);
+        t.put(JavaCoreConstants.VERSION_1_8, DOMConstants.JDK1_8);
+        t.put(JavaCoreConstants.VERSION_9, DOMConstants.JDK9);
+        t.put(JavaCoreConstants.VERSION_10, DOMConstants.JDK10);
+        t.put(JavaCoreConstants.VERSION_11, DOMConstants.JDK11);
+        t.put(JavaCoreConstants.VERSION_12, DOMConstants.JDK12);
+        t.put(JavaCoreConstants.VERSION_13, DOMConstants.JDK13);
+        t.put(JavaCoreConstants.VERSION_14, DOMConstants.JDK14);
+        t.put(JavaCoreConstants.VERSION_15, DOMConstants.JDK15);
+        t.put(JavaCoreConstants.VERSION_16, DOMConstants.JDK16);
+        t.put(JavaCoreConstants.VERSION_17, DOMConstants.JDK17);
+        t.put(JavaCoreConstants.VERSION_18, DOMConstants.JDK18);
+        t.put(JavaCoreConstants.VERSION_19, DOMConstants.JDK19);
+        t.put(JavaCoreConstants.VERSION_20, DOMConstants.JDK20);
+        t.put(JavaCoreConstants.VERSION_21, DOMConstants.JDK21);
+        t.put(JavaCoreConstants.VERSION_22, DOMConstants.JDK22);
+        t.put(JavaCoreConstants.VERSION_23, DOMConstants.JDK23);
+        t.put(JavaCoreConstants.VERSION_24, DOMConstants.JDK24);
+        t.put(JavaCoreConstants.VERSION_25, DOMConstants.JDK25);
+        t.put(JavaCoreConstants.VERSION_26, DOMConstants.JDK26);
         return Collections.unmodifiableMap(t);
 	}
 	private static Map<String, Integer> getApiLevelMapTable() {
         Map<String, Integer> t = new HashMap<>();
         t.put(null, JLS8_INTERNAL);
-        t.put(JavaCore.VERSION_1_2, JLS8_INTERNAL);
-        t.put(JavaCore.VERSION_1_3, JLS8_INTERNAL);
-        t.put(JavaCore.VERSION_1_4, JLS8_INTERNAL);
-        t.put(JavaCore.VERSION_1_5, JLS8_INTERNAL);
-        t.put(JavaCore.VERSION_1_6, JLS8_INTERNAL);
-        t.put(JavaCore.VERSION_1_7, JLS8_INTERNAL);
-        t.put(JavaCore.VERSION_1_8, JLS8_INTERNAL);
-        t.put(JavaCore.VERSION_9, JLS9_INTERNAL);
-        t.put(JavaCore.VERSION_10, JLS10_INTERNAL);
-        t.put(JavaCore.VERSION_11, JLS11_INTERNAL);
-        t.put(JavaCore.VERSION_12, JLS12_INTERNAL);
-        t.put(JavaCore.VERSION_13, JLS13_INTERNAL);
-        t.put(JavaCore.VERSION_14, JLS14_INTERNAL);
-        t.put(JavaCore.VERSION_15, JLS15_INTERNAL);
-        t.put(JavaCore.VERSION_16, JLS16_INTERNAL);
-        t.put(JavaCore.VERSION_17, JLS17_INTERNAL);
-        t.put(JavaCore.VERSION_18, JLS18_INTERNAL);
-        t.put(JavaCore.VERSION_19, JLS19_INTERNAL);
-        t.put(JavaCore.VERSION_20, JLS20_INTERNAL);
-        t.put(JavaCore.VERSION_21, JLS21_INTERNAL);
-        t.put(JavaCore.VERSION_22, JLS22_INTERNAL);
-        t.put(JavaCore.VERSION_23, JLS23_INTERNAL);
-        t.put(JavaCore.VERSION_24, JLS24_INTERNAL);
-        t.put(JavaCore.VERSION_25, JLS25_INTERNAL);
-        t.put(JavaCore.VERSION_26, JLS26_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_1_2, JLS8_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_1_3, JLS8_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_1_4, JLS8_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_1_5, JLS8_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_1_6, JLS8_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_1_7, JLS8_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_1_8, JLS8_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_9, JLS9_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_10, JLS10_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_11, JLS11_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_12, JLS12_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_13, JLS13_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_14, JLS14_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_15, JLS15_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_16, JLS16_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_17, JLS17_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_18, JLS18_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_19, JLS19_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_20, JLS20_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_21, JLS21_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_22, JLS22_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_23, JLS23_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_24, JLS24_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_25, JLS25_INTERNAL);
+        t.put(JavaCoreConstants.VERSION_26, JLS26_INTERNAL);
         return Collections.unmodifiableMap(t);
 	}
 	/**
@@ -1443,7 +1479,7 @@ public final class AST {
 	 *
 	 * @return the binding resolver for this AST
 	 */
-	BindingResolver getBindingResolver() {
+	AbstractBindingResolver getBindingResolver() {
 		return this.resolver;
 	}
 
@@ -1474,7 +1510,7 @@ public final class AST {
 	 * @since 3.3
 	 */
 	public boolean hasBindingsRecovery() {
-		return (this.bits & ICompilationUnit.ENABLE_BINDINGS_RECOVERY) != 0;
+		return (this.bits & ENABLE_BINDINGS_RECOVERY) != 0;
 	}
 
 	/**
@@ -1494,7 +1530,7 @@ public final class AST {
 	 * @since 3.3
 	 */
 	public boolean hasStatementsRecovery() {
-		return (this.bits & ICompilationUnit.ENABLE_STATEMENTS_RECOVERY) != 0;
+		return (this.bits & ENABLE_STATEMENTS_RECOVERY) != 0;
 	}
 
 	/* (omit javadoc for this method)
@@ -3828,20 +3864,20 @@ public final class AST {
 	 * @see CompilationUnit#recordModifications()
 	 * @since 3.0
 	 */
-	void recordModifications(CompilationUnit root) {
-		if(this.modificationCount.get() != this.originalModificationCount) {
-			throw new IllegalArgumentException("AST is already modified"); //$NON-NLS-1$
-		} else if(this.rewriter  != null) {
-			throw new IllegalArgumentException("AST modifications are already recorded"); //$NON-NLS-1$
-		} else if((root.getFlags() & ASTNode.PROTECT) != 0) {
-			throw new IllegalArgumentException("Root node is unmodifiable"); //$NON-NLS-1$
-		} else if(root.getAST() != this) {
-			throw new IllegalArgumentException("Root node is not owned by this ast"); //$NON-NLS-1$
-		}
-
-		this.rewriter = new InternalASTRewrite(root);
-		setEventHandler(this.rewriter);
-	}
+//	void recordModifications(CompilationUnit root) {
+//		if(this.modificationCount.get() != this.originalModificationCount) {
+//			throw new IllegalArgumentException("AST is already modified"); //$NON-NLS-1$
+//		} else if(this.rewriter  != null) {
+//			throw new IllegalArgumentException("AST modifications are already recorded"); //$NON-NLS-1$
+//		} else if((root.getFlags() & ASTNode.PROTECT) != 0) {
+//			throw new IllegalArgumentException("Root node is unmodifiable"); //$NON-NLS-1$
+//		} else if(root.getAST() != this) {
+//			throw new IllegalArgumentException("Root node is not owned by this ast"); //$NON-NLS-1$
+//		}
+//
+//		this.rewriter = new InternalASTRewrite(root);
+//		setEventHandler(this.rewriter);
+//	}
 
 	//=============================== ANNOTATIONS ====================
 
@@ -3933,22 +3969,22 @@ public final class AST {
 	 * @see CompilationUnit#rewrite(IDocument, Map)
 	 * @since 3.0
 	 */
-	TextEdit rewrite(IDocument document, Map options) {
-		if (document == null) {
-			throw new IllegalArgumentException();
-		}
-		if (this.rewriter  == null) {
-			throw new IllegalStateException("Modifications record is not enabled"); //$NON-NLS-1$
-		}
-		return this.rewriter.rewriteAST(document, options);
-	}
+//	TextEdit rewrite(IDocument document, Map options) {
+//		if (document == null) {
+//			throw new IllegalArgumentException();
+//		}
+//		if (this.rewriter  == null) {
+//			throw new IllegalStateException("Modifications record is not enabled"); //$NON-NLS-1$
+//		}
+//		return this.rewriter.rewriteAST(document, options);
+//	}
 
 	/**
 	 * Sets the binding resolver for this AST.
 	 *
 	 * @param resolver the new binding resolver for this AST
 	 */
-	void setBindingResolver(BindingResolver resolver) {
+	void setBindingResolver(AbstractBindingResolver resolver) {
 		if (resolver == null) {
 			throw new IllegalArgumentException();
 		}

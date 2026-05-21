@@ -16,11 +16,6 @@ package org.eclipse.jdt.core.dom;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.eclipse.jdt.core.compiler.InvalidInputException;
-import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
-import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
-import org.eclipse.jdt.internal.compiler.parser.Scanner;
-import org.eclipse.jdt.internal.compiler.parser.TerminalToken;
 
 /**
  * AST node for a simple name. A simple name is an identifier other than
@@ -159,7 +154,7 @@ public class SimpleName extends Name {
 			if (get) {
 				return isVar();
 			} else {
-				if (Long.compare(this.ast.scanner.complianceLevel, ClassFileConstants.JDK10) < 0) {
+				if (Long.compare(this.ast.complianceLevel, DOMConstants.JDK10) < 0) {
 					setVar(false);
 				} else {
 					setVar(value);
@@ -181,7 +176,7 @@ public class SimpleName extends Name {
 		SimpleName result = new SimpleName(target);
 		result.setSourceRange(getStartPosition(), getLength());
 		result.setIdentifier(getIdentifier());
-		if (this.ast.apiLevel >= AST.JLS10_INTERNAL && Long.compare(this.ast.scanner.complianceLevel, 10) >= 0) {
+		if (this.ast.apiLevel >= AST.JLS10_INTERNAL && Long.compare(this.ast.complianceLevel, 10) >= 0) {
 			result.setVar(isVar());
 		}
 		return result;
@@ -226,32 +221,8 @@ public class SimpleName extends Name {
 		if (identifier == null) {
 			throw new IllegalArgumentException();
 		}
-		Scanner scanner = this.ast.scanner;
-		long sourceLevel = scanner.sourceLevel;
-		long complianceLevel = scanner.complianceLevel;
-
-		try {
-			scanner.sourceLevel = CompilerOptions.getFirstSupportedJdkLevel();
-			scanner.complianceLevel = CompilerOptions.getFirstSupportedJdkLevel();
-			char[] source = identifier.toCharArray();
-			scanner.setSource(source);
-			final int length = source.length;
-			scanner.resetTo(0, length - 1);
-			try {
-				TerminalToken tokenType = scanner.scanIdentifier();
-				if (tokenType != TerminalToken.TokenNameIdentifier) {
-					throw new IllegalArgumentException("Invalid identifier : >" + identifier + "<");  //$NON-NLS-1$//$NON-NLS-2$
-				}
-				if (scanner.currentPosition != length) {
-					// this is the case when there is only one identifier see 87849
-					throw new IllegalArgumentException("Invalid identifier : >" + identifier + "<");  //$NON-NLS-1$//$NON-NLS-2$
-				}
-			} catch (InvalidInputException e) {
-				throw new IllegalArgumentException("Invalid identifier : >" + identifier + "<", e); //$NON-NLS-1$//$NON-NLS-2$
-			}
-		} finally {
-			this.ast.scanner.sourceLevel = sourceLevel;
-			this.ast.scanner.complianceLevel = complianceLevel;
+		if (!DOMConstants.isValidJavaIdentifier(identifier)) {
+			throw new IllegalArgumentException("Invalid identifier : >" + identifier + "<");  //$NON-NLS-1$//$NON-NLS-2$
 		}
 		preValueChange(IDENTIFIER_PROPERTY);
 		this.identifier = identifier;

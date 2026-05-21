@@ -14,9 +14,6 @@
 
 package org.eclipse.jdt.core.dom;
 
-import org.eclipse.jdt.core.IAnnotation;
-import org.eclipse.jdt.core.IJavaElement;
-
 /**
  * A binding represents a named entity in the Java language. The world of
  * bindings provides an integrated picture of the structure of the program as
@@ -239,7 +236,7 @@ public interface IBinding {
 	 * 		or <code>null</code> if none
 	 * @since 3.1
 	 */
-	public IJavaElement getJavaElement();
+//	public IJavaElement getJavaElement();
 
 	/**
 	 * Returns the key for this binding.
