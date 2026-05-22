@@ -20,5 +20,7 @@ Import-Package: com.google.gson,
  org.osgi.framework,
  org.osgi.service.log,
  org.slf4j
-Export-Package: org.jboss.tools.javac.ls.server
+Export-Package: org.jboss.tools.javac.ls.server,
+ org.jboss.tools.javac.ls.server.model,
+ org.jboss.tools.javac.ls.server.model.classpath
 Require-Bundle: org.jboss.tools.javac.ls.api
