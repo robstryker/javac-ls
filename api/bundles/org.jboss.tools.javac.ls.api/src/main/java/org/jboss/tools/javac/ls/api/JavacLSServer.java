@@ -10,6 +10,7 @@ package org.jboss.tools.javac.ls.api;
 
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.services.JsonSegment;
 import org.jboss.tools.javac.ls.api.dao.Status;
@@ -23,5 +24,12 @@ public interface JavacLSServer {
 	 */
 	@JsonRequest
 	CompletableFuture<Status> ping();
+
+	/**
+	 * The `server/shutdown` notification is sent by the client to shut down the
+	 * server itself.
+	 */
+	@JsonNotification
+	void shutdown();
 
 }

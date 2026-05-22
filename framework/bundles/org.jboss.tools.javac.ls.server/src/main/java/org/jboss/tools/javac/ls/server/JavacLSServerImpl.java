@@ -54,6 +54,12 @@ public class JavacLSServerImpl implements JavacLSServer {
 		return CompletableFuture.completedFuture(status);
 	}
 
+	@Override
+	public void shutdown() {
+		LOG.info("Received shutdown request");
+		launcher.shutdown();
+	}
+
 	public void notifyStatusChanged(Status status) {
 		for (JavacLSClient client : getClients()) {
 			try {
