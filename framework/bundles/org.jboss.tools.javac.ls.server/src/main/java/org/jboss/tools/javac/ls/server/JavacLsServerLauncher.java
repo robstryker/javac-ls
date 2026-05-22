@@ -57,21 +57,10 @@ public class JavacLsServerLauncher {
 	public JavacLsServerLauncher(String portString) {
 		this.portString = portString;
 		this.serverImpl = new JavacLSServerImpl(this);
+		createWorkspaceModel();
 	}
 
-	public List<JavacLSClient> getClients() {
-		return serverImpl.getClients();
-	}
-
-	public WorkspaceModel getWorkspaceModel() {
-		return workspaceModel;
-	}
-
-	public void launch() throws Exception {
-		launch(Integer.parseInt(this.portString));
-	}
-
-	public void launch(int port) throws Exception {
+	private void createWorkspaceModel() {
 		// Log and ensure workspace directory exists
 		String workspacePath = ServerFlags.getWorkspacePath();
 		java.io.File workspaceDir = ServerFlags.getWorkspaceDirectory();
@@ -88,7 +77,21 @@ public class JavacLsServerLauncher {
 		// Load workspace model
 		workspaceModel = new WorkspaceModel(workspaceDir);
 		LOG.info("Loaded workspace model with {} projects", workspaceModel.getProjectCount());
+	}
 
+	public List<JavacLSClient> getClients() {
+		return serverImpl.getClients();
+	}
+
+	public WorkspaceModel getWorkspaceModel() {
+		return workspaceModel;
+	}
+
+	public void launch() throws Exception {
+		launch(Integer.parseInt(this.portString));
+	}
+
+	public void launch(int port) throws Exception {
 		startListening(port, serverImpl);
 	}
 

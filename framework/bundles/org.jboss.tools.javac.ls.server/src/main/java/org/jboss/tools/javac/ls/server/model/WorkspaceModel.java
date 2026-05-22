@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.jboss.tools.javac.ls.server.model.classpath.ClasspathCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,12 +38,14 @@ public class WorkspaceModel {
 	private final File workspaceFile;
 	private final Map<String, WorkspaceProject> projects;
 	private final Gson gson;
+	private final ClasspathCache classpathCache;
 
 	public WorkspaceModel(File workspaceDir) {
 		this.workspaceDir = workspaceDir;
 		this.workspaceFile = new File(workspaceDir, WORKSPACE_FILE);
 		this.projects = new HashMap<>();
 		this.gson = new GsonBuilder().setPrettyPrinting().create();
+		this.classpathCache = new ClasspathCache(workspaceDir);
 		load();
 	}
 
@@ -217,5 +220,14 @@ public class WorkspaceModel {
 	 */
 	public File getWorkspaceFile() {
 		return workspaceFile;
+	}
+
+	/**
+	 * Get the classpath cache.
+	 *
+	 * @return the classpath cache
+	 */
+	public ClasspathCache getClasspathCache() {
+		return classpathCache;
 	}
 }
