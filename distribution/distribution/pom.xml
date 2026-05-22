@@ -18,7 +18,7 @@
         <felix.version>7.0.3</felix.version>
 	<felix.hash>f4d53ba31cc5457afbfef00935dde810d4e6b420</felix.hash>
         <felix.folder>felix-framework-${felix.version}</felix.folder>
-        <rsp-distribution.folder>rsp-distribution</rsp-distribution.folder>
+        <rsp-distribution.folder>javacls-distribution</rsp-distribution.folder>
 	</properties>
 	
 	<build>
