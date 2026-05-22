@@ -137,6 +137,9 @@ public class JavacLSStartupShutdownTest {
 			clientInstance.launch();
 
 			assertTrue(clientInstance.isConnectionActive());
+
+			// Give time for server to register the client
+			Thread.sleep(500);
 		} catch(Exception e) {
 			e.printStackTrace();
 			cleanup(serverInstance, clientInstance);
