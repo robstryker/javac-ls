@@ -10,4 +10,4 @@ echo "Building javac-ls with increased XML parser limits..."
 echo "MAVEN_OPTS: $MAVEN_OPTS"
 echo ""
 
-mvn clean install -DskipTests "$@"
+mvn clean install "$@"
