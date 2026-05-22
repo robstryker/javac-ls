@@ -160,14 +160,24 @@ public class JavacLsServerLauncher {
 
 		@Override
 		public void run() {
+			JavacLSClient client = null;
 			try {
 				Launcher<JavacLSClient> launcher = new SocketLauncher<>(server, JavacLSClient.class, socket);
-				JavacLSClient client = launcher.getRemoteProxy();
+				client = launcher.getRemoteProxy();
 				server.addClient(client);
-				launcher.startListening();
 				LOG.info("Client connected from {}", socket.getRemoteSocketAddress());
+
+				// Wait for the connection to close
+				launcher.startListening().get();
+
+				// Connection closed
+				server.removeClient(client);
+				LOG.info("Client disconnected from {}", socket.getRemoteSocketAddress());
 			} catch (Exception e) {
 				LOG.error("Error handling client connection", e);
+				if (client != null) {
+					server.removeClient(client);
+				}
 			} finally {
 				try {
 					socket.close();
