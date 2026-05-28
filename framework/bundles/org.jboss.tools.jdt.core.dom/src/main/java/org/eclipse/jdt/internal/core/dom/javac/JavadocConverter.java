@@ -8,7 +8,9 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
-package org.eclipse.jdt.core.dom;
+package org.eclipse.jdt.internal.core.dom.javac;
+
+import org.eclipse.jdt.core.dom.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,10 +23,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import org.eclipse.core.runtime.ILog;
-import org.eclipse.jdt.internal.javac.javadoc.JavacJdtMarkupParser;
-import org.eclipse.jdt.internal.javac.javadoc.JavacJdtMarkupTag;
-import org.eclipse.jdt.internal.javac.javadoc.JavacJdtMarkupTagAttribute;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.eclipse.jdt.internal.core.dom.javac.javadoc.JavacJdtMarkupParser;
+import org.eclipse.jdt.internal.core.dom.javac.javadoc.JavacJdtMarkupTag;
+import org.eclipse.jdt.internal.core.dom.javac.javadoc.JavacJdtMarkupTagAttribute;
 
 import shaded.com.sun.source.doctree.DocTree.Kind;
 import shaded.com.sun.source.util.DocTreePath;
@@ -69,6 +72,8 @@ import shaded.com.sun.tools.javac.util.Convert;
 import shaded.com.sun.tools.javac.util.JCDiagnostic;
 
 class JavadocConverter {
+
+	private static final Logger LOG = LoggerFactory.getLogger(JavadocConverter.class);
 
 	// Both copied from jdk.javadoc.internal.doclets.formats.html.taglets.snippet.Parser
 	private static final Pattern JAVA_COMMENT = Pattern.compile(
@@ -167,7 +172,7 @@ class JavadocConverter {
 				}
 			}
 		} catch (Exception ex) {
-			ILog.get().error("Failed to convert Javadoc", ex);
+			LOG.error("Failed to convert Javadoc", ex);
 		}
 		return res;
 	}
@@ -534,7 +539,7 @@ class JavadocConverter {
 			}
 			return currentElement;
 		} catch (Exception ex) {
-			ILog.get().error("While trying to build snippet line " + line + ": " + ex.getMessage(), ex);
+			LOG.error("While trying to build snippet line " + line + ": " + ex.getMessage(), ex);
 		}
 		return defaultElement;
 	}
@@ -544,7 +549,7 @@ class JavadocConverter {
 			res.setName(snippetMarkupAttribute.name());
 			res.setStringValue(snippetMarkupAttribute.value());
 		} catch (Exception ex) {
-			ILog.get().error(ex.getMessage(), ex);
+			LOG.error(ex.getMessage(), ex);
 		}
 		return res;
 	}
@@ -715,7 +720,7 @@ class JavadocConverter {
 			return inlineTag;
 		}
 		var message = "💥🐛 Not supported yet conversion of " + javac.getClass().getSimpleName() + " to element";
-		ILog.get().error(message);
+		LOG.error(message);
 		JavaDocTextElement res = this.ast.newJavaDocTextElement();
 		commonSettings(res, javac);
 		res.setText(this.docComment.comment.getText().substring(javac.getStartPosition(), javac.getEndPosition()) + System.lineSeparator() + message);
