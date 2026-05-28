@@ -13,13 +13,23 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
 import org.jboss.tools.javac.ls.server.model.WorkspaceProject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 /**
  * Discovers classpath for Eclipse projects.
  * This is a fallback discoverer with the lowest priority.
  */
 public class EclipseProjectClasspathDiscoverer implements IProjectClasspathDiscoverer {
+
+	private static final Logger LOG = LoggerFactory.getLogger(EclipseProjectClasspathDiscoverer.class);
 
 	@Override
 	public String getId() {
@@ -48,7 +58,79 @@ public class EclipseProjectClasspathDiscoverer implements IProjectClasspathDisco
 	@Override
 	public ArrayList<IJavacClasspathEntry> discoverClasspath(WorkspaceProject proj) {
 		ArrayList<IJavacClasspathEntry> entries = new ArrayList<>();
-		// TODO: Implement Eclipse classpath discovery
+
+		if (proj == null || proj.getPath() == null) {
+			return entries;
+		}
+
+		File projectDir = new File(proj.getPath());
+		File classpathFile = new File(projectDir, ".classpath");
+
+		if (!classpathFile.exists()) {
+			LOG.warn("Eclipse .classpath file not found for project: {}", proj.getName());
+			return entries;
+		}
+
+		try {
+			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder builder = factory.newDocumentBuilder();
+			Document doc = builder.parse(classpathFile);
+
+			NodeList classpathEntries = doc.getElementsByTagName("classpathentry");
+
+			for (int i = 0; i < classpathEntries.getLength(); i++) {
+				Element entry = (Element) classpathEntries.item(i);
+				String kind = entry.getAttribute("kind");
+				String path = entry.getAttribute("path");
+
+				if (path == null || path.isEmpty()) {
+					continue;
+				}
+
+				if ("src".equals(kind)) {
+					// Source folder
+					File srcPath = resolvePathRelativeToProject(projectDir, path);
+					if (srcPath.exists()) {
+						entries.add(new JavacClasspathEntry(IJavacClasspathEntry.EntryType.SOURCE,
+								srcPath.getAbsolutePath()));
+					}
+				} else if ("lib".equals(kind)) {
+					// Library JAR
+					File libPath = resolvePathRelativeToProject(projectDir, path);
+					if (libPath.exists()) {
+						entries.add(new JavacClasspathEntry(IJavacClasspathEntry.EntryType.LIBRARY,
+								libPath.getAbsolutePath()));
+					}
+				} else if ("output".equals(kind)) {
+					// Output folder (compiled classes)
+					File outputPath = resolvePathRelativeToProject(projectDir, path);
+					if (outputPath.exists()) {
+						entries.add(new JavacClasspathEntry(IJavacClasspathEntry.EntryType.SOURCE,
+								outputPath.getAbsolutePath()));
+					}
+				}
+				// Skip "con" (containers like JRE) and "var" (workspace variables) for now
+			}
+
+			LOG.info("Discovered {} classpath entries from Eclipse .classpath for project: {}",
+					entries.size(), proj.getName());
+
+		} catch (Exception e) {
+			LOG.error("Failed to parse Eclipse .classpath file for project: {}", proj.getName(), e);
+		}
+
 		return entries;
+	}
+
+	/**
+	 * Resolve a path from .classpath relative to the project directory.
+	 * Handles both relative paths and absolute paths.
+	 */
+	private File resolvePathRelativeToProject(File projectDir, String path) {
+		File resolved = new File(path);
+		if (resolved.isAbsolute()) {
+			return resolved;
+		}
+		return new File(projectDir, path);
 	}
 }

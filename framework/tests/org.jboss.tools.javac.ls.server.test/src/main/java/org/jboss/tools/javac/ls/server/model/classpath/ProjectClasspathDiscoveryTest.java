@@ -9,6 +9,7 @@
 package org.jboss.tools.javac.ls.server.model.classpath;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -39,6 +40,7 @@ public class ProjectClasspathDiscoveryTest {
 
 	@After
 	public void teardown() {
+		discovery.shutdown();
 		deleteRecursively(tempDir);
 	}
 
@@ -174,5 +176,140 @@ public class ProjectClasspathDiscoveryTest {
 	public void testGetCache() {
 		ClasspathCache retrievedCache = discovery.getCache();
 		assertEquals(cache, retrievedCache);
+	}
+
+	@Test
+	public void testNonBlockingReturnsEmptyWhenNoCache() throws IOException {
+		File projectDir = new File(tempDir, "test-project");
+		projectDir.mkdirs();
+		new File(projectDir, "src").mkdirs();
+
+		String classpathContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+				"<classpath>\n" +
+				"	<classpathentry kind=\"src\" path=\"src\"/>\n" +
+				"</classpath>";
+		Files.write(new File(projectDir, ".classpath").toPath(), classpathContent.getBytes());
+
+		WorkspaceProject proj = new WorkspaceProject("test-project", projectDir.getAbsolutePath());
+
+		// No cache exists, non-blocking should return empty list
+		ArrayList<IJavacClasspathEntry> entries = discovery.getClasspathNonBlocking(proj, false);
+		assertNotNull(entries);
+		assertEquals(0, entries.size());
+	}
+
+	@Test
+	public void testNonBlockingReturnsStaleCache() throws IOException, InterruptedException {
+		File projectDir = new File(tempDir, "test-project");
+		projectDir.mkdirs();
+		File srcDir = new File(projectDir, "src");
+		srcDir.mkdirs();
+
+		String classpathContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+				"<classpath>\n" +
+				"	<classpathentry kind=\"src\" path=\"src\"/>\n" +
+				"</classpath>";
+		File classpathFile = new File(projectDir, ".classpath");
+		Files.write(classpathFile.toPath(), classpathContent.getBytes());
+
+		WorkspaceProject proj = new WorkspaceProject("test-project", projectDir.getAbsolutePath());
+
+		// First discovery to populate cache (blocking)
+		ArrayList<IJavacClasspathEntry> entries1 = discovery.getClasspath(proj);
+		assertEquals(1, entries1.size());
+
+		// Wait and modify .classpath to make cache stale
+		Thread.sleep(10);
+		classpathFile.setLastModified(System.currentTimeMillis());
+
+		// Non-blocking should still return the stale cache
+		ArrayList<IJavacClasspathEntry> entries2 = discovery.getClasspathNonBlocking(proj, false);
+		assertNotNull(entries2);
+		assertEquals(1, entries2.size());
+		assertEquals(entries1.get(0).getPath(), entries2.get(0).getPath());
+	}
+
+	@Test
+	public void testBlockingUsesValidCache() throws IOException {
+		File projectDir = new File(tempDir, "test-project");
+		projectDir.mkdirs();
+		new File(projectDir, "src").mkdirs();
+
+		String classpathContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+				"<classpath>\n" +
+				"	<classpathentry kind=\"src\" path=\"src\"/>\n" +
+				"</classpath>";
+		Files.write(new File(projectDir, ".classpath").toPath(), classpathContent.getBytes());
+
+		WorkspaceProject proj = new WorkspaceProject("test-project", projectDir.getAbsolutePath());
+
+		// First discovery to populate cache
+		ArrayList<IJavacClasspathEntry> entries1 = discovery.getClasspath(proj);
+		assertEquals(1, entries1.size());
+
+		// Second blocking call with valid cache should use cache
+		ArrayList<IJavacClasspathEntry> entries2 = discovery.getClasspath(proj);
+		assertNotNull(entries2);
+		assertEquals(1, entries2.size());
+	}
+
+	@Test
+	public void testBlockingRediscoversWhenCacheInvalid() throws IOException, InterruptedException {
+		File projectDir = new File(tempDir, "test-project");
+		projectDir.mkdirs();
+		File srcDir = new File(projectDir, "src");
+		srcDir.mkdirs();
+
+		String classpathContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+				"<classpath>\n" +
+				"	<classpathentry kind=\"src\" path=\"src\"/>\n" +
+				"</classpath>";
+		File classpathFile = new File(projectDir, ".classpath");
+		Files.write(classpathFile.toPath(), classpathContent.getBytes());
+
+		WorkspaceProject proj = new WorkspaceProject("test-project", projectDir.getAbsolutePath());
+
+		// First call - should perform discovery
+		ArrayList<IJavacClasspathEntry> entries1 = discovery.getClasspath(proj);
+		assertEquals(1, entries1.size());
+
+		// Modify .classpath to invalidate cache
+		Thread.sleep(10);
+		classpathFile.setLastModified(System.currentTimeMillis());
+
+		// Second call - should perform fresh discovery due to invalid cache
+		ArrayList<IJavacClasspathEntry> entries2 = discovery.getClasspath(proj);
+		assertEquals(1, entries2.size());
+	}
+
+	@Test
+	public void testIsDiscoveryInProgress() throws IOException, InterruptedException {
+		File projectDir = new File(tempDir, "test-project");
+		projectDir.mkdirs();
+		new File(projectDir, "src").mkdirs();
+
+		String classpathContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+				"<classpath>\n" +
+				"	<classpathentry kind=\"src\" path=\"src\"/>\n" +
+				"</classpath>";
+		Files.write(new File(projectDir, ".classpath").toPath(), classpathContent.getBytes());
+
+		WorkspaceProject proj = new WorkspaceProject("test-project", projectDir.getAbsolutePath());
+
+		// Initially no discovery in progress
+		assertFalse(discovery.isDiscoveryInProgress(proj));
+
+		// Trigger background discovery
+		discovery.getClasspathNonBlocking(proj, true);
+
+		// Should be in progress immediately after triggering
+		// (might be done already for small project, so we just check it doesn't crash)
+		boolean inProgress = discovery.isDiscoveryInProgress(proj);
+
+		// Wait for completion
+		Thread.sleep(200);
+
+		// Should be complete now
+		assertFalse(discovery.isDiscoveryInProgress(proj));
 	}
 }

@@ -98,13 +98,59 @@ public class EclipseProjectClasspathDiscovererTest {
 	@Test
 	public void testDiscoverClasspath() throws IOException {
 		File classpathFile = new File(tempDir, ".classpath");
-		classpathFile.createNewFile();
+
+		// Create actual source and lib directories
+		File srcDir = new File(tempDir, "src");
+		File libDir = new File(tempDir, "lib");
+		File binDir = new File(tempDir, "bin");
+		srcDir.mkdirs();
+		libDir.mkdirs();
+		binDir.mkdirs();
+
+		// Create a dummy JAR file
+		File jarFile = new File(libDir, "test.jar");
+		jarFile.createNewFile();
+
+		// Write a valid .classpath XML
+		String classpathContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+				"<classpath>\n" +
+				"	<classpathentry kind=\"src\" path=\"src\"/>\n" +
+				"	<classpathentry kind=\"lib\" path=\"lib/test.jar\"/>\n" +
+				"	<classpathentry kind=\"output\" path=\"bin\"/>\n" +
+				"	<classpathentry kind=\"con\" path=\"org.eclipse.jdt.launching.JRE_CONTAINER\"/>\n" +
+				"</classpath>";
+
+		java.nio.file.Files.write(classpathFile.toPath(), classpathContent.getBytes());
 
 		WorkspaceProject proj = new WorkspaceProject("test-eclipse", tempDir.getAbsolutePath());
 
-		// Currently just returns empty list - implementation pending
 		java.util.ArrayList<IJavacClasspathEntry> entries = discoverer.discoverClasspath(proj);
 		assertNotNull(entries);
-		// Will have entries once we implement Eclipse discovery
+
+		// Should have 3 entries: src folder, lib JAR, and bin output folder
+		// (con entries are skipped)
+		assertEquals(3, entries.size());
+
+		// Verify we have the expected entries
+		boolean foundSrc = false;
+		boolean foundLib = false;
+		boolean foundBin = false;
+
+		for (IJavacClasspathEntry entry : entries) {
+			if (entry.getPath().endsWith("src")) {
+				foundSrc = true;
+				assertEquals(IJavacClasspathEntry.EntryType.SOURCE, entry.getType());
+			} else if (entry.getPath().endsWith("test.jar")) {
+				foundLib = true;
+				assertEquals(IJavacClasspathEntry.EntryType.LIBRARY, entry.getType());
+			} else if (entry.getPath().endsWith("bin")) {
+				foundBin = true;
+				assertEquals(IJavacClasspathEntry.EntryType.SOURCE, entry.getType());
+			}
+		}
+
+		assertTrue("src folder not found", foundSrc);
+		assertTrue("lib JAR not found", foundLib);
+		assertTrue("bin output folder not found", foundBin);
 	}
 }
