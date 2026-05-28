@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.jboss.tools.javac.ls.server.model.classpath.ClasspathCache;
+import org.jboss.tools.javac.ls.server.model.classpath.IJavacClasspathEntry;
+import org.jboss.tools.javac.ls.server.model.classpath.ProjectClasspathDiscovery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +41,7 @@ public class WorkspaceModel {
 	private final Map<String, WorkspaceProject> projects;
 	private final Gson gson;
 	private final ClasspathCache classpathCache;
+	private final ProjectClasspathDiscovery classpathDiscovery;
 
 	public WorkspaceModel(File workspaceDir) {
 		this.workspaceDir = workspaceDir;
@@ -46,6 +49,7 @@ public class WorkspaceModel {
 		this.projects = new HashMap<>();
 		this.gson = new GsonBuilder().setPrettyPrinting().create();
 		this.classpathCache = new ClasspathCache(workspaceDir);
+		this.classpathDiscovery = new ProjectClasspathDiscovery(classpathCache);
 		load();
 	}
 
@@ -229,5 +233,72 @@ public class WorkspaceModel {
 	 */
 	public ClasspathCache getClasspathCache() {
 		return classpathCache;
+	}
+
+	/**
+	 * Get the classpath discovery service.
+	 *
+	 * @return the classpath discovery service
+	 */
+	public ProjectClasspathDiscovery getClasspathDiscovery() {
+		return classpathDiscovery;
+	}
+
+	/**
+	 * Get the classpath for a project (BLOCKING).
+	 * Returns cached classpath if valid, otherwise performs fresh discovery.
+	 * This method will block until discovery completes if cache is invalid or missing.
+	 *
+	 * @param projectName the project name
+	 * @return list of classpath entries, or empty list if project not found or no discoverer accepts it
+	 */
+	public synchronized ArrayList<IJavacClasspathEntry> getProjectClasspath(String projectName) {
+		WorkspaceProject project = projects.get(projectName);
+		if (project == null) {
+			LOG.warn("Cannot get classpath for unknown project: {}", projectName);
+			return new ArrayList<>();
+		}
+		return classpathDiscovery.getClasspath(project);
+	}
+
+	/**
+	 * Get the classpath for a project (NON-BLOCKING).
+	 * Returns cached classpath (even if stale), or empty list if no cache exists.
+	 * Returns immediately without blocking.
+	 *
+	 * @param projectName the project name
+	 * @param triggerRefresh if true, triggers background discovery job to refresh cache
+	 * @return cached classpath entries (possibly stale), or empty list if no cache or project not found
+	 */
+	public synchronized ArrayList<IJavacClasspathEntry> getProjectClasspathNonBlocking(String projectName, boolean triggerRefresh) {
+		WorkspaceProject project = projects.get(projectName);
+		if (project == null) {
+			LOG.warn("Cannot get classpath for unknown project: {}", projectName);
+			return new ArrayList<>();
+		}
+		return classpathDiscovery.getClasspathNonBlocking(project, triggerRefresh);
+	}
+
+	/**
+	 * Check if classpath discovery is currently in progress for a project.
+	 *
+	 * @param projectName the project name
+	 * @return true if discovery job is running, false otherwise or if project not found
+	 */
+	public synchronized boolean isClasspathDiscoveryInProgress(String projectName) {
+		WorkspaceProject project = projects.get(projectName);
+		if (project == null) {
+			return false;
+		}
+		return classpathDiscovery.isDiscoveryInProgress(project);
+	}
+
+	/**
+	 * Shutdown the workspace model and release resources.
+	 * This includes shutting down the background classpath discovery executor.
+	 */
+	public void shutdown() {
+		LOG.info("Shutting down workspace model");
+		classpathDiscovery.shutdown();
 	}
 }
