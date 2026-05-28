@@ -233,6 +233,114 @@ public class MavenProjectIntegrationTest {
 	}
 
 	@Test
+	public void testCacheInvalidationBehaviorWithAllStrategies() throws IOException, InterruptedException {
+		File projectDir = createRealMavenProject("test-maven-invalidation");
+		WorkspaceProject proj = new WorkspaceProject("test-maven-invalidation", projectDir.getAbsolutePath());
+
+		// Step 1: Initial discovery to populate cache
+		System.out.println("\n=== Step 1: Initial Discovery ===");
+		long startTime = System.currentTimeMillis();
+		ArrayList<IJavacClasspathEntry> initialEntries = discovery.getClasspath(proj);
+		long initialDuration = System.currentTimeMillis() - startTime;
+
+		assertNotNull(initialEntries);
+		assertTrue("Initial discovery should return entries", initialEntries.size() > 0);
+		System.out.println("Initial discovery took: " + initialDuration + "ms");
+		System.out.println("Found " + initialEntries.size() + " entries");
+
+		// Step 2: Verify cache is used on second call
+		System.out.println("\n=== Step 2: Cache Hit ===");
+		startTime = System.currentTimeMillis();
+		ArrayList<IJavacClasspathEntry> cachedEntries = discovery.getClasspath(proj);
+		long cachedDuration = System.currentTimeMillis() - startTime;
+
+		assertEquals("Cached call should return same entries", initialEntries.size(), cachedEntries.size());
+		assertTrue("Cache hit should be fast", cachedDuration < 50);
+		System.out.println("Cache hit took: " + cachedDuration + "ms");
+
+		// Step 3: Invalidate cache by modifying pom.xml
+		System.out.println("\n=== Step 3: Invalidate Cache ===");
+		File pomFile = new File(projectDir, "pom.xml");
+		Thread.sleep(10);
+		pomFile.setLastModified(System.currentTimeMillis());
+		System.out.println("Modified pom.xml to invalidate cache");
+
+		// Step 4: Test BLOCKING call with invalid cache - should re-execute Maven
+		System.out.println("\n=== Step 4: Blocking with Invalid Cache ===");
+		startTime = System.currentTimeMillis();
+		ArrayList<IJavacClasspathEntry> blockingEntries = discovery.getClasspath(proj);
+		long blockingDuration = System.currentTimeMillis() - startTime;
+
+		assertNotNull("Blocking should return entries", blockingEntries);
+		assertEquals("Blocking should return same number of entries", initialEntries.size(), blockingEntries.size());
+		assertTrue("Blocking should take significant time (Maven re-execution)",
+				blockingDuration > 500); // Should run Maven again
+		System.out.println("Blocking re-discovery took: " + blockingDuration + "ms");
+
+		// Step 5: Invalidate cache again
+		System.out.println("\n=== Step 5: Invalidate Cache Again ===");
+		Thread.sleep(10);
+		pomFile.setLastModified(System.currentTimeMillis());
+
+		// Step 6: Test NON-BLOCKING without trigger - should return stale, no job
+		System.out.println("\n=== Step 6: Non-Blocking WITHOUT Trigger (Invalid Cache) ===");
+		startTime = System.currentTimeMillis();
+		ArrayList<IJavacClasspathEntry> nonBlockingNoTrigger = discovery.getClasspathNonBlocking(proj, false);
+		long nonBlockingNoTriggerDuration = System.currentTimeMillis() - startTime;
+
+		assertNotNull("Non-blocking should return stale", nonBlockingNoTrigger);
+		assertEquals("Should return stale cache", initialEntries.size(), nonBlockingNoTrigger.size());
+		assertTrue("Non-blocking should be instant", nonBlockingNoTriggerDuration < 50);
+
+		// Should NOT have started a background job
+		Thread.sleep(50);
+		boolean jobRunning = discovery.isDiscoveryInProgress(proj);
+		assertFalse("Should NOT start background job when trigger=false", jobRunning);
+		System.out.println("Non-blocking (no trigger) took: " + nonBlockingNoTriggerDuration + "ms");
+		System.out.println("Background job started: " + jobRunning);
+
+		// Step 7: Invalidate cache one more time
+		System.out.println("\n=== Step 7: Invalidate Cache One More Time ===");
+		Thread.sleep(10);
+		pomFile.setLastModified(System.currentTimeMillis());
+
+		// Step 8: Test NON-BLOCKING with trigger - should return stale AND start job
+		System.out.println("\n=== Step 8: Non-Blocking WITH Trigger (Invalid Cache) ===");
+		startTime = System.currentTimeMillis();
+		ArrayList<IJavacClasspathEntry> nonBlockingWithTrigger = discovery.getClasspathNonBlocking(proj, true);
+		long nonBlockingWithTriggerDuration = System.currentTimeMillis() - startTime;
+
+		assertNotNull("Non-blocking should return stale", nonBlockingWithTrigger);
+		assertEquals("Should return stale cache", initialEntries.size(), nonBlockingWithTrigger.size());
+		assertTrue("Non-blocking should be instant", nonBlockingWithTriggerDuration < 50);
+
+		// Should HAVE started a background job
+		Thread.sleep(50);
+		boolean jobStarted = discovery.isDiscoveryInProgress(proj);
+		System.out.println("Non-blocking (with trigger) took: " + nonBlockingWithTriggerDuration + "ms");
+		System.out.println("Background job started: " + jobStarted);
+
+		// Wait for background job to complete
+		int waited = 0;
+		while (discovery.isDiscoveryInProgress(proj) && waited < 60000) {
+			Thread.sleep(500);
+			waited += 500;
+		}
+		System.out.println("Background job completed after: " + waited + "ms");
+
+		// Step 9: Verify summary
+		System.out.println("\n=== Summary ===");
+		System.out.println("Initial discovery (cold):     " + initialDuration + "ms");
+		System.out.println("Cache hit (valid):            " + cachedDuration + "ms");
+		System.out.println("Blocking (invalid cache):     " + blockingDuration + "ms (re-ran Maven)");
+		System.out.println("Non-blocking no trigger:      " + nonBlockingNoTriggerDuration + "ms (stale, no job)");
+		System.out.println("Non-blocking with trigger:    " + nonBlockingWithTriggerDuration + "ms (stale, started job)");
+
+		assertTrue("Blocking should be much slower than non-blocking",
+				blockingDuration > nonBlockingWithTriggerDuration * 10);
+	}
+
+	@Test
 	public void testBlockingWaitsForBackgroundJobToComplete() throws IOException, InterruptedException {
 		File projectDir = createRealMavenProject("test-maven-blocking-waits");
 		WorkspaceProject proj = new WorkspaceProject("test-maven-blocking-waits", projectDir.getAbsolutePath());
