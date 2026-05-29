@@ -223,9 +223,9 @@ public class JavacDOMParser {
 	 */
 	private Map<String, String> getDefaultCompilerOptions() {
 		Map<String, String> options = new HashMap<>();
-		options.put(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_17);
-		options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_17);
-		options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_17);
+		options.put(JavaCore.COMPILER_SOURCE, "17");
+		options.put(JavaCore.COMPILER_COMPLIANCE, "17");
+		options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, "17");
 		options.put(JavaCore.COMPILER_DOC_COMMENT_SUPPORT, JavaCore.ENABLED);
 		return options;
 	}
@@ -251,7 +251,7 @@ public class JavacDOMParser {
 		}
 
 		// Preview features
-		if (JavaCore.ENABLED.equals(compilerOptions.get(JavaCore.COMPILER_PB_ENABLE_PREVIEW_FEATURES))) {
+		if (JavaCore.ENABLED.equals(compilerOptions.get("org.eclipse.jdt.core.compiler.problem.enablePreviewFeatures"))) {
 			javacOptions.put(Option.PREVIEW, Boolean.toString(true));
 		}
 
@@ -289,23 +289,12 @@ public class JavacDOMParser {
 	 * Create AST with correct settings.
 	 */
 	private AST createAST(Map<String, String> options, int level, Context context) {
-		AST ast = AST.newAST(level, JavaCore.ENABLED.equals(options.get(JavaCore.COMPILER_PB_ENABLE_PREVIEW_FEATURES)));
+		AST ast = AST.newAST(level, JavaCore.ENABLED.equals(options.get("org.eclipse.jdt.core.compiler.problem.enablePreviewFeatures")));
 		ast.setDefaultNodeFlag(ASTNode.ORIGINAL);
 
-		String sourceModeSetting = options.get(JavaCore.COMPILER_SOURCE);
-		long sourceLevel = CompilerOptions.versionToJdkLevel(sourceModeSetting);
-		if (sourceLevel == 0) {
-			sourceLevel = ClassFileConstants.getLatestJDKLevel();
-		}
-		ast.scanner.sourceLevel = sourceLevel;
-
-		String compliance = options.get(JavaCore.COMPILER_COMPLIANCE);
-		long complianceLevel = CompilerOptions.versionToJdkLevel(compliance);
-		if (complianceLevel == 0) {
-			complianceLevel = sourceLevel;
-		}
-		ast.scanner.complianceLevel = complianceLevel;
-		ast.scanner.previewEnabled = JavaCore.ENABLED.equals(options.get(JavaCore.COMPILER_PB_ENABLE_PREVIEW_FEATURES));
+		// Note: Scanner configuration (sourceLevel, complianceLevel, previewEnabled)
+		// is not available in this version of JDT's AST. The API level passed to newAST()
+		// determines the parser behavior.
 
 		return ast;
 	}

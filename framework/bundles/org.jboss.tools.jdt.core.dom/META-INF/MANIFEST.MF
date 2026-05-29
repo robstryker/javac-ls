@@ -5,4 +5,13 @@ Bundle-SymbolicName: org.jboss.tools.jdt.core.dom
 Automatic-Module-Name: org.jboss.tools.jdt.core.dom
 Bundle-Version: 0.0.1.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-17
-Export-Package: org.eclipse.jdt.core.dom
+Require-Bundle: org.jboss.tools.javac.ls.server;bundle-version="0.0.1";visibility:=reexport
+Import-Package: org.eclipse.jdt.core,
+ org.eclipse.jdt.core.compiler,
+ org.eclipse.jdt.internal.compiler.classfmt,
+ org.eclipse.jdt.internal.compiler.impl,
+ org.eclipse.jdt.internal.compiler.problem,
+ org.eclipse.jdt.internal.compiler.util,
+ org.slf4j;version="1.7.10"
+Export-Package: org.eclipse.jdt.core.dom,
+ org.eclipse.jdt.internal.core.dom.javac
