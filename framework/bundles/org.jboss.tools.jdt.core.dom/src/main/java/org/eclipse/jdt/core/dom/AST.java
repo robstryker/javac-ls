@@ -2915,6 +2915,31 @@ public final class AST {
 	}
 
 	/**
+	 * Creates and returns a new unparented module qualified name node with
+	 * the given module qualifier and name.
+	 *
+	 * @param moduleQualifier the module qualifier name node
+	 * @param name the name being qualified
+	 * @return a new unparented module qualified name node
+	 * @exception IllegalArgumentException if:
+	 * <ul>
+	 * <li>the node belongs to a different AST</li>
+	 * <li>the node already has a parent</li>
+	 * </ul>
+	 * @since 3.24
+	 */
+	public ModuleQualifiedName newModuleQualifiedName(
+		Name moduleQualifier,
+		Name name) {
+		ModuleQualifiedName result = new ModuleQualifiedName(this);
+		result.setModuleQualifier(moduleQualifier);
+		if (name != null) {
+			result.setName(name);
+		}
+		return result;
+	}
+
+	/**
 	 * Creates and returns a new unparented qualified type node with
 	 * the given qualifier type and name.
 	 *

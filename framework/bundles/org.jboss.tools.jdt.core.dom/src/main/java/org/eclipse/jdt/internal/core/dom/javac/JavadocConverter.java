@@ -855,10 +855,8 @@ class JavadocConverter {
 		}
 		int startPos = moduleName.getStartPosition();
 		int endPos = moduleName.getStartPosition() + moduleName.getLength();
-		ModuleQualifiedName mqn = new ModuleQualifiedName(this.ast);
-		mqn.setModuleQualifier(moduleName);
+		ModuleQualifiedName mqn = this.ast.newModuleQualifiedName(moduleName, qualifierExpressionName);
 		if (qualifierExpressionName != null) {
-			mqn.setName(qualifierExpressionName);
 			endPos = qualifierExpressionName.getStartPosition() + qualifierExpressionName.getLength();
 		}
 		mqn.setSourceRange(startPos, endPos - startPos);
