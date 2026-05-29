@@ -418,7 +418,7 @@ class JavacConverter {
 			// it's a broken module import
 			var moduleModifier = this.ast.newModifier(ModifierKeyword.MODULE_KEYWORD);
 			res.modifiers().add(moduleModifier);
-			Name name = new SimpleName(this.ast);
+			Name name = this.ast.newSimpleName("");
 			name.setSourceRange(res.getStartPosition() + res.getLength() + 1, 0);
 			res.setName(name);
 			res.setSourceRange(res.getStartPosition(), res.getLength() + 1);
@@ -619,7 +619,7 @@ class JavacConverter {
 				yield decl;
 			}
 			case CLASS -> javacClassDecl.getModifiers() != null && (javacClassDecl.getModifiers().flags & Flags.IMPLICIT_CLASS) != 0  ?
-					new ImplicitTypeDeclaration(this.ast) :
+					this.ast.newImplicitTypeDeclaration() :
 					this.ast.newTypeDeclaration();
 			default -> throw new IllegalStateException();
 		};
@@ -714,8 +714,7 @@ class JavacConverter {
 			}
 		} else if (res instanceof AnnotationTypeDeclaration annotDecl) {
 			//setModifiers(annotationTypeMemberDeclaration2, annotationTypeMemberDeclaration);
-			final SimpleName name = new SimpleName(this.ast);
-			name.internalSetIdentifier(new String(annotDecl.typeName.toString()));
+			final SimpleName name = this.ast.newSimpleName(new String(annotDecl.typeName.toString()));
 			res.setName(name);
 			if( javacClassDecl.defs != null ) {
 				for( Iterator<JCTree> i = javacClassDecl.defs.iterator(); i.hasNext(); ) {
@@ -772,10 +771,9 @@ class JavacConverter {
 	}
 
 	private TypeParameter convert(JCTypeParameter typeParameter) {
-		final TypeParameter ret = new TypeParameter(this.ast);
+		final TypeParameter ret = this.ast.newTypeParameter();
 		commonSettings(ret, typeParameter);
-		final SimpleName simpleName = new SimpleName(this.ast);
-		simpleName.internalSetIdentifier(typeParameter.getName().toString());
+		final SimpleName simpleName = this.ast.newSimpleName(typeParameter.getName().toString());
 		int start = typeParameter.pos;
 		int end = typeParameter.pos + typeParameter.getName().length();
 		simpleName.setSourceRange(start, end - start);
@@ -864,7 +862,7 @@ class JavacConverter {
 	}
 
 	private ASTNode convertMethodInAnnotationTypeDecl(JCMethodDecl javac, ASTNode parent) {
-		AnnotationTypeMemberDeclaration res = new AnnotationTypeMemberDeclaration(this.ast);
+		AnnotationTypeMemberDeclaration res = this.ast.newAnnotationTypeMemberDeclaration();
 		commonSettings(res, javac);
 		res.modifiers().addAll(convert(javac.getModifiers(), res));
 		res.setType(convertToType(javac.getReturnType()));
@@ -3177,16 +3175,18 @@ class JavacConverter {
 				&& !(jcpe instanceof JCWildcard)) {
 				if( jcpe instanceof JCFieldAccess jcfa2) {
 					if( jcfa2.selected instanceof JCAnnotatedType || jcfa2.selected instanceof JCTypeApply) {
-						QualifiedType nameQualifiedType = new QualifiedType(this.ast);
+						QualifiedType nameQualifiedType = this.ast.newQualifiedType(
+							convertToType(jcfa2.selected),
+							this.ast.newSimpleName(jcfa2.name.toString())
+						);
 						commonSettings(nameQualifiedType, javac);
-						nameQualifiedType.setQualifier(convertToType(jcfa2.selected));
-						nameQualifiedType.setName(this.ast.newSimpleName(jcfa2.name.toString()));
 						res = nameQualifiedType;
 					} else {
-						NameQualifiedType nameQualifiedType = new NameQualifiedType(this.ast);
+						NameQualifiedType nameQualifiedType = this.ast.newNameQualifiedType(
+							toName(jcfa2.selected),
+							this.ast.newSimpleName(jcfa2.name.toString())
+						);
 						commonSettings(nameQualifiedType, javac);
-						nameQualifiedType.setQualifier(toName(jcfa2.selected));
-						nameQualifiedType.setName(this.ast.newSimpleName(jcfa2.name.toString()));
 						res = nameQualifiedType;
 					}
 				} else if (jcpe instanceof JCIdent simpleType) {
@@ -3298,11 +3298,10 @@ class JavacConverter {
 				JCExpression expr = it.next();
 				if( expr instanceof JCAssign jcass) {
 					if( jcass.lhs instanceof JCIdent jcid ) {
-						final MemberValuePair pair = new MemberValuePair(this.ast);
+						final MemberValuePair pair = this.ast.newMemberValuePair();
 						commonSettings(pair, jcass);
-						final SimpleName simpleName = new SimpleName(this.ast);
+						final SimpleName simpleName = this.ast.newSimpleName(new String(jcid.getName().toString()));
 						commonSettings(simpleName, jcid);
-						simpleName.internalSetIdentifier(new String(jcid.getName().toString()));
 						int start = jcid.pos;
 						int end = start + jcid.getName().toString().length();
 						simpleName.setSourceRange(start, end - start );
@@ -3682,11 +3681,10 @@ class JavacConverter {
 				String o = jcid.getName().toString();
 				String o2 = enumDecl.getName().toString();
 				if( o.equals(o2)) {
-					enumConstantDeclaration = new EnumConstantDeclaration(this.ast);
+					enumConstantDeclaration = this.ast.newEnumConstantDeclaration();
 					commonSettings(enumConstantDeclaration, enumConstant);
-					final SimpleName typeName = new SimpleName(this.ast);
 					enumName = enumConstant.getName().toString();
-					typeName.internalSetIdentifier(enumName);
+					final SimpleName typeName = this.ast.newSimpleName(enumName);
 					typeName.setSourceRange(enumConstant.getStartPosition(), Math.max(0, enumName.length()));
 					enumConstantDeclaration.setName(typeName);
 					if (enumConstant.getModifiers() != null && enumConstant.getPreferredPosition() != Position.NOPOS) {
