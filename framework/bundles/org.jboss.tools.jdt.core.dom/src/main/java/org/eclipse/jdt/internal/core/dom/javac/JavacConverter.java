@@ -201,12 +201,12 @@ class JavacConverter {
 				res.setPackage(possible);
 			}
 		}
-		if (javacCompilationUnit.getModule() != null && this.ast.apiLevel >= AST.JLS9_INTERNAL) {
+		if (javacCompilationUnit.getModule() != null && this.ast.apiLevel() >= AST.JLS9) {
 			res.setModule(convert(javacCompilationUnit.getModuleDecl()));
 		}
 		javacCompilationUnit.getImports().stream().map(tree ->
 			tree instanceof JCImport imp ? convert(imp) :
-			tree instanceof JCModuleImport moduleImp && this.ast.apiLevel >= AST.JLS23_INTERNAL ? convert(moduleImp) :
+			tree instanceof JCModuleImport moduleImp && this.ast.apiLevel() >= AST.JLS23 ? convert(moduleImp) :
 			null).filter(ImportDeclaration.class::isInstance)
 			.forEach(res.imports()::add);
 		javacCompilationUnit.getTypeDecls().stream()
@@ -414,7 +414,7 @@ class JavacConverter {
 		if (select.getIdentifier().contentEquals("*")) {
 			res.setOnDemand(true);
 			res.setName(toName(select.getExpression()));
-		} else if (this.ast.apiLevel >= AST.JLS23_INTERNAL && select.selected.toString().equals("module") && select.name.toString().equals("<error>")) {
+		} else if (this.ast.apiLevel() >= AST.JLS23 && select.selected.toString().equals("module") && select.name.toString().equals("<error>")) {
 			// it's a broken module import
 			var moduleModifier = this.ast.newModifier(ModifierKeyword.MODULE_KEYWORD);
 			res.modifiers().add(moduleModifier);
@@ -429,7 +429,7 @@ class JavacConverter {
 			res.setFlags(res.getFlags() | ASTNode.MALFORMED);
 		}
 		if (javac.isStatic() || javac.isModule()) {
-			if (this.ast.apiLevel < AST.JLS23_INTERNAL) {
+			if (this.ast.apiLevel() < AST.JLS23) {
 				if (!javac.isStatic()) {
 					res.setFlags(res.getFlags() | ASTNode.MALFORMED);
 				}
@@ -605,7 +605,7 @@ class JavacConverter {
 			return null;
 		}
 		if( javacClassDecl.getKind() == Kind.RECORD &&
-				(this.ast.apiLevel < AST.JLS16_INTERNAL || this.ast.apiLevel() < AST.JLS16)) {
+				(this.ast.apiLevel() < AST.JLS16 || this.ast.apiLevel() < AST.JLS16)) {
 			return null;
 		}
 
@@ -667,7 +667,7 @@ class JavacConverter {
 			}
 
 			if (javacClassDecl.getPermitsClause() != null) {
-				if( this.ast.apiLevel >= AST.JLS17_INTERNAL) {
+				if( this.ast.apiLevel() >= AST.JLS17) {
 					javacClassDecl.getPermitsClause().stream()
 						.map(this::convertToType)
 						.filter(Objects::nonNull)
@@ -714,13 +714,13 @@ class JavacConverter {
 			}
 		} else if (res instanceof AnnotationTypeDeclaration annotDecl) {
 			//setModifiers(annotationTypeMemberDeclaration2, annotationTypeMemberDeclaration);
-			final SimpleName name = this.ast.newSimpleName(new String(annotDecl.typeName.toString()));
+			final SimpleName name = this.ast.newSimpleName(new String(annotDecl.getName().toString()));
 			res.setName(name);
 			if( javacClassDecl.defs != null ) {
 				for( Iterator<JCTree> i = javacClassDecl.defs.iterator(); i.hasNext(); ) {
 					ASTNode converted = convertBodyDeclaration(i.next(), res, parentBodyFilled);
 					if( converted != null ) {
-						res.bodyDeclarations.add(converted);
+						res.bodyDeclarations().add(converted);
 					}
 				}
 			}
@@ -756,7 +756,7 @@ class JavacConverter {
 				} else {
 					ASTNode converted = convertBodyDeclaration(node, res, parentBodyFilled);
 					if( converted != null ) {
-						res.bodyDeclarations.add(converted);
+						res.bodyDeclarations().add(converted);
 					}
 				}
 			}
@@ -944,7 +944,7 @@ class JavacConverter {
 			String postName = this.rawText.substring(javac.pos + methodDeclName.length()).trim();
 			String firstChar = postName != null && postName.length() > 0 ? postName.substring(0,1) : null;
 			isCompactConstructor = ("{".equals(firstChar));
-			if( this.ast.apiLevel >= AST.JLS16_INTERNAL) {
+			if( this.ast.apiLevel() >= AST.JLS16) {
 				res.setCompactConstructor(isCompactConstructor);
 			}
 		}
@@ -1039,7 +1039,7 @@ class JavacConverter {
 					boolean isInterface = td instanceof TypeDeclaration td1 && td1.isInterface();
 					long modFlags = javac.getModifiers() == null ? 0 : javac.getModifiers().flags;
 					boolean isAbstractOrNative = (modFlags & (Flags.ABSTRACT | Flags.NATIVE)) != 0;
-					boolean isJlsAbove8 = this.ast.apiLevel > AST.JLS8_INTERNAL;
+					boolean isJlsAbove8 = this.ast.apiLevel() > AST.JLS8;
 					long flagsToCheckForAboveJLS8 = Flags.STATIC | Flags.DEFAULT | (isJlsAbove8 ? Flags.PRIVATE : 0);
 					boolean notAllowed = (isAbstractOrNative || (isInterface && (modFlags & flagsToCheckForAboveJLS8) == 0));
 					if (notAllowed) {
@@ -1528,7 +1528,7 @@ class JavacConverter {
 			commonSettings(res, javac);
 			res.setLeftOperand(convertExpression(jcInstanceOf.getExpression()));
 			Pattern p = convert(jcPattern);
-			if( p != null && this.ast.apiLevel >= AST.JLS20_INTERNAL)
+			if( p != null && this.ast.apiLevel() >= AST.JLS20)
 				res.setPattern(p);
 			else {
 				res.setRightOperand(convertToSingleVarDecl(jcPattern));
@@ -1974,14 +1974,14 @@ class JavacConverter {
 		return true;
 	}
 	private Pattern convert(JCPattern jcPattern) {
-		if (this.ast.apiLevel >= AST.JLS21_INTERNAL) {
+		if (this.ast.apiLevel() >= AST.JLS21) {
 			if (jcPattern instanceof JCBindingPattern jcBindingPattern) {
 				TypePattern jdtPattern = this.ast.newTypePattern();
 				commonSettings(jdtPattern, jcBindingPattern);
 				VariableDeclaration pv = convertVariableDeclaration(jcBindingPattern.var);
 				removeFinalModifierFromTypePattern(pv, jdtPattern);
 
-				if (this.ast.apiLevel < AST.JLS22) {
+				if (this.ast.apiLevel() < AST.JLS22) {
 					jdtPattern.setPatternVariable((SingleVariableDeclaration)pv);
 				} else {
 					jdtPattern.setPatternVariable(pv);
@@ -2695,10 +2695,10 @@ class JavacConverter {
 		SwitchCase res = this.ast.newSwitchCase();
 		commonSettings(res, jcCase);
 		boolean isSwitchLabeledRule = jcCase.getCaseKind() == CaseKind.RULE;
-		if (this.ast.apiLevel >= AST.JLS14_INTERNAL) {
+		if (this.ast.apiLevel() >= AST.JLS14) {
 			res.setSwitchLabeledRule(isSwitchLabeledRule);
 		}
-		if (this.ast.apiLevel >= AST.JLS21_INTERNAL) {
+		if (this.ast.apiLevel() >= AST.JLS21) {
 			if (jcCase.getGuard() != null || (jcCase.getLabels().size() > 1 && jcCase.getLabels().stream().anyMatch(JCPatternCaseLabel.class::isInstance))) {
 				Pattern pattern = null;
 				if (jcCase.getLabels().length() > 1) {
@@ -2768,18 +2768,18 @@ class JavacConverter {
 			List<Expression> expressions = new ArrayList<>();
 			jcCase.getLabels().stream().map(this::convert).forEach(expressions::add);
 			if (expressions.size() == 1 && expressions.get(0) instanceof CaseDefaultExpression) {
-				if (this.ast.apiLevel() < AST.JLS14_INTERNAL) {
+				if (this.ast.apiLevel() < AST.JLS14) {
 					res.setExpression(null);
 				}
 			} else if (!expressions.isEmpty()) {
-				if (this.ast.apiLevel() >= AST.JLS14_INTERNAL) {
+				if (this.ast.apiLevel() >= AST.JLS14) {
 					res.expressions().addAll(expressions);
 				} else {
 					res.setExpression(expressions.get(0));
 				}
 			}
 		}
-		if (this.ast.apiLevel() >= AST.JLS14_INTERNAL && res.expressions().size() == 1 && res.expressions().get(0) instanceof CaseDefaultExpression) {
+		if (this.ast.apiLevel() >= AST.JLS14 && res.expressions().size() == 1 && res.expressions().get(0) instanceof CaseDefaultExpression) {
 			res.expressions().clear();
 		}
 		// jcCase.getStatements is processed as part of JCSwitch conversion
@@ -2868,11 +2868,11 @@ class JavacConverter {
 				ASTNode working = convertTryResource(it.next(), parent);
 				if( working instanceof VariableDeclarationExpression) {
 					res.resources().add(working);
-				} else if( this.ast.apiLevel >= AST.JLS9_INTERNAL && working instanceof Name){
+				} else if( this.ast.apiLevel() >= AST.JLS9 && working instanceof Name){
 					res.resources().add(working);
-				} else if( this.ast.apiLevel >= AST.JLS9_INTERNAL && working instanceof SuperFieldAccess){
+				} else if( this.ast.apiLevel() >= AST.JLS9 && working instanceof SuperFieldAccess){
 					res.resources().add(working);
-				} else if( this.ast.apiLevel >= AST.JLS9_INTERNAL && working instanceof FieldAccess){
+				} else if( this.ast.apiLevel() >= AST.JLS9 && working instanceof FieldAccess){
 					res.resources().add(working);
 				} else {
 					res.setFlags(res.getFlags() | ASTNode.MALFORMED);
