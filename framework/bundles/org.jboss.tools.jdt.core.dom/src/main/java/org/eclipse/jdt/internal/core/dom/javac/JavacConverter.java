@@ -39,6 +39,7 @@ import org.eclipse.jdt.core.dom.Modifier.ModifierKeyword;
 import org.eclipse.jdt.core.dom.ModuleModifier.ModuleModifierKeyword;
 import org.eclipse.jdt.core.dom.PrefixExpression.Operator;
 import org.eclipse.jdt.core.dom.PrimitiveType.Code;
+import org.eclipse.jdt.core.dom.JavacDomPackageAccessor;
 
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 
@@ -192,7 +193,7 @@ class JavacConverter {
 	void populateCompilationUnit(CompilationUnit res, JCCompilationUnit javacCompilationUnit) {
 		commonSettings(res, javacCompilationUnit);
 		res.setSourceRange(0, this.rawText.length());
-		res.setLineEndTable(toLineEndPosTable(javacCompilationUnit.getLineMap(), res.getLength()));
+		JavacDomPackageAccessor.setLineEndTable(res, toLineEndPosTable(javacCompilationUnit.getLineMap(), res.getLength()));
 		if (javacCompilationUnit.getPackage() != null) {
 			res.setPackage(convert(javacCompilationUnit.getPackage()));
 		} else if( javacCompilationUnit.defs != null && javacCompilationUnit.defs.size() > 0 && javacCompilationUnit.defs.get(0) instanceof JCErroneous jcer) {
@@ -674,7 +675,7 @@ class JavacConverter {
 						.forEach(typeDeclaration.permittedTypes()::add);
 					if (!javacClassDecl.getPermitsClause().isEmpty()) {
 						int permitsOffset = this.rawText.substring(javacClassDecl.pos).indexOf("permits") + javacClassDecl.pos;
-						typeDeclaration.setRestrictedIdentifierStartPosition(permitsOffset);
+						JavacDomPackageAccessor.setRestrictedIdentifierStartPosition(typeDeclaration, permitsOffset);
 					}
 				}
 			}
@@ -743,7 +744,7 @@ class JavacConverter {
 		} else if (res instanceof RecordDeclaration recordDecl) {
 			int start = javacClassDecl.getPreferredPosition();
 			if( start != -1 ) {
-				recordDecl.setRestrictedIdentifierStartPosition(start);
+				JavacDomPackageAccessor.setRestrictedIdentifierStartPosition(recordDecl, start);
 			}
 			for (JCTree node : javacClassDecl.getMembers()) {
 				if (node instanceof JCVariableDecl vd && !vd.getModifiers().getFlags().contains(shaded.javax.lang.model.element.Modifier.STATIC)) {
@@ -2137,7 +2138,7 @@ class JavacConverter {
 			}
 			if (arrayType.dimensions().isEmpty()) {
 				Type elementType = arrayType.getElementType();
-				elementType.setParent(null, null);
+				JavacDomPackageAccessor.setParent(elementType, null, null);
 				return elementType;
 			}
 			int end = this.rawText.indexOf("...", arrayType.getStartPosition());
@@ -2296,7 +2297,7 @@ class JavacConverter {
 				TextBlock res = this.ast.newTextBlock();
 				commonSettings(res, literal);
 				String rawValue = this.rawText.substring(pos, endPos);
-				res.internalSetEscapedValue(rawValue, string);
+				JavacDomPackageAccessor.internalSetEscapedValue(res, rawValue, string);
 				return res;
 			}
 			malformed = true;
@@ -2314,7 +2315,7 @@ class JavacConverter {
 				if (!string.endsWith("\"")) {
 					string = string + '"';
 				}
-				res.internalSetEscapedValue(string);
+				JavacDomPackageAccessor.internalSetEscapedValue(res, string);
 			} catch(IndexOutOfBoundsException ignore) {
 				res.setLiteralValue(string);  // TODO: we want the token here
 			}
@@ -2599,7 +2600,7 @@ class JavacConverter {
 						YieldStatement yieldstmt = this.ast.newYieldStatement();
 						commonSettings(yieldstmt, jcs);
 						yieldstmt.setExpression(convertExpression(jces.getExpression()));
-						yieldstmt.setImplicit(true);
+						JavacDomPackageAccessor.setImplicit(yieldstmt, true);
 						s1 = yieldstmt;
 					} else {
 						s1 = convertStatement(jcs, res);
@@ -2731,7 +2732,7 @@ class JavacConverter {
 					GuardedPattern guardedPattern = this.ast.newGuardedPattern();
 					guardedPattern.setPattern(pattern);
 					guardedPattern.setExpression(convertExpression(jcCase.getGuard()));
-					guardedPattern.setRestrictedIdentifierStartPosition(jcCase.getGuard().getStartPosition() - "when ".length()); // javac gives start position without "when " while jdt expects it with
+					JavacDomPackageAccessor.setRestrictedIdentifierStartPosition(guardedPattern, jcCase.getGuard().getStartPosition() - "when ".length()); // javac gives start position without "when " while jdt expects it with
 					int start = guardedPattern.getPattern().getStartPosition();
 					int end = guardedPattern.getExpression().getStartPosition() + guardedPattern.getExpression().getLength();
 					guardedPattern.setSourceRange(start, end - start);
@@ -2902,7 +2903,7 @@ class JavacConverter {
 				commonSettings(fragment, javac);
 				removeTrailingSemicolonFromRange(fragment);
 				fragment.setFlags(single.getFlags());
-				SimpleName name = (SimpleName)single.getName().clone(this.ast);
+				SimpleName name = (SimpleName)(SimpleName)JavacDomPackageAccessor.clone(single.getName(), this.ast);
 				fragment.setName(name);
 				Expression initializer = single.getInitializer();
 				if (initializer != null) {
@@ -3057,7 +3058,7 @@ class JavacConverter {
 			if(qualifierType instanceof SimpleType simpleType && simpleType.annotations().isEmpty()) {
 				simpleType.delete();
 				Name parentName = simpleType.getName();
-				parentName.setParent(null, null);
+				JavacDomPackageAccessor.setParent(parentName, null, null);
 				QualifiedName name = this.ast.newQualifiedName(simpleType.getName(), simpleName);
 				commonSettings(name, javac);
 				int length = simpleType.getName().getLength() + 1 + simpleName.getLength();

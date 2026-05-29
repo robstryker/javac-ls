@@ -26,6 +26,7 @@ import java.util.Map;
 
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.*;
+import org.eclipse.jdt.core.dom.JavacDomPackageAccessor;
 import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
@@ -290,7 +291,7 @@ public class JavacDOMParser {
 	 */
 	private AST createAST(Map<String, String> options, int level, Context context) {
 		AST ast = AST.newAST(level, JavaCore.ENABLED.equals(options.get("org.eclipse.jdt.core.compiler.problem.enablePreviewFeatures")));
-		ast.setDefaultNodeFlag(ASTNode.ORIGINAL);
+		JavacDomPackageAccessor.setDefaultNodeFlag(ast, ASTNode.ORIGINAL);
 
 		// Note: Scanner configuration (sourceLevel, complianceLevel, previewEnabled)
 		// is not available in this version of JDT's AST. The API level passed to newAST()
@@ -365,7 +366,7 @@ public class JavacDOMParser {
 			return true;
 		}
 		return unit.getCommentList().stream()
-				.allMatch(other -> pos < other.getStartPosition() || pos >= other.getStartPosition() + other.getLength());
+				.allMatch(other -> pos < ((Comment)other).getStartPosition() || pos >= ((Comment)other).getStartPosition() + ((Comment)other).getLength());
 	}
 
 	/**
@@ -383,7 +384,7 @@ public class JavacDOMParser {
 		}
 
 		working.sort(Comparator.comparingInt(Comment::getStartPosition));
-		unit.setCommentTable(working.toArray(Comment[]::new));
+		JavacDomPackageAccessor.setCommentTable(unit, working.toArray(Comment[]::new));
 	}
 
 	/**

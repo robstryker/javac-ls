@@ -351,7 +351,8 @@ class JavadocConverter {
 			}
 			if (res.getStartPosition() < 0) {
 				int start = ((ASTNode)res.fragments().get(0)).getStartPosition() - 1 /* [ */;
-				ASTNode lastChild = (ASTNode)res.fragments().getLast();
+				List fragments = res.fragments();
+			ASTNode lastChild = (ASTNode)fragments.get(fragments.size() - 1);
 				int end = lastChild.getStartPosition() + lastChild.getLength() + 1 /* ) */;
 				res.setSourceRange(start, end - start);
 			}
