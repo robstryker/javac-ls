@@ -675,7 +675,7 @@ class JavacConverter {
 						.forEach(typeDeclaration.permittedTypes()::add);
 					if (!javacClassDecl.getPermitsClause().isEmpty()) {
 						int permitsOffset = this.rawText.substring(javacClassDecl.pos).indexOf("permits") + javacClassDecl.pos;
-						JavacDomPackageAccessor.setRestrictedIdentifierStartPosition(typeDeclaration, permitsOffset);
+						typeDeclaration.setRestrictedIdentifierStartPosition(permitsOffset);
 					}
 				}
 			}
@@ -744,7 +744,7 @@ class JavacConverter {
 		} else if (res instanceof RecordDeclaration recordDecl) {
 			int start = javacClassDecl.getPreferredPosition();
 			if( start != -1 ) {
-				JavacDomPackageAccessor.setRestrictedIdentifierStartPosition(recordDecl, start);
+				recordDecl.setRestrictedIdentifierStartPosition(start);
 			}
 			for (JCTree node : javacClassDecl.getMembers()) {
 				if (node instanceof JCVariableDecl vd && !vd.getModifiers().getFlags().contains(shaded.javax.lang.model.element.Modifier.STATIC)) {
@@ -1210,7 +1210,7 @@ class JavacConverter {
 				res.setType(resType);
 			}
 			if( javac.getType() instanceof JCErroneous && resType instanceof SimpleType st && st.getName() instanceof SimpleName sn && sn.toString().equals(FAKE_IDENTIFIER)) {
-				if( fragment.getName() instanceof SimpleName fragName && fragName.toString().equals(FAKE_IDENTIFIER)) {
+				if( fragment.getName() != null && fragment.getName().toString().equals(FAKE_IDENTIFIER)) {
 					return null;
 				}
 			}
@@ -1421,7 +1421,8 @@ class JavacConverter {
 			ClassInstanceCreation res = this.ast.newClassInstanceCreation();
 			commonSettings(res, javac);
 			res.setType(convertToType(newClass.getIdentifier()));
-			if (newClass.getClassBody() != null && newClass.getClassBody() instanceof JCClassDecl javacAnon) {
+			if (newClass.getClassBody() != null && newClass.getClassBody() != null) {
+				JCClassDecl javacAnon = newClass.getClassBody();
 				AnonymousClassDeclaration anon = createAnonymousClassDeclaration(javacAnon, res);
 				res.setAnonymousClassDeclaration(anon);
 			}
@@ -1664,7 +1665,7 @@ class JavacConverter {
 					if (arrayType.dimensions().isEmpty()) {
 						arrayType.dimensions().addAll(extraDimensions);
 					} else {
-						var lastDimension = arrayType.dimensions().removeFirst();
+						var lastDimension = arrayType.dimensions().remove(0);
 						arrayType.dimensions().addAll(extraDimensions);
 						arrayType.dimensions().add(lastDimension);
 					}
@@ -1795,8 +1796,8 @@ class JavacConverter {
 	}
 
 	private SingleVariableDeclaration convertToSingleVarDecl(JCPattern jcPattern) {
-		if( jcPattern instanceof JCBindingPattern jcbp && jcbp.var instanceof JCVariableDecl decl) {
-			SingleVariableDeclaration vdd = (SingleVariableDeclaration)convertVariableDeclaration(decl);
+		if( jcPattern instanceof JCBindingPattern jcbp && jcbp.var != null) {
+			SingleVariableDeclaration vdd = (SingleVariableDeclaration)convertVariableDeclaration(jcbp.var);
 			return vdd;
 		}
 		return null;
@@ -2044,7 +2045,7 @@ class JavacConverter {
 			while (start >= 0 && this.rawText.charAt(start) != '{') {
 				start--;
 			}
-			Expression lastExpr = (Expression)initializer.expressions().getLast();
+			Expression lastExpr = (Expression)initializer.expressions().get(initializer.expressions().size() - 1);
 			int end = lastExpr.getStartPosition() + lastExpr.getLength();
 			while (end < this.rawText.length() && this.rawText.charAt(end) != '}') {
 				end++;
@@ -2132,7 +2133,7 @@ class JavacConverter {
 
 	private Type extractVarargsDimension(Type converted, SingleVariableDeclaration declaration) {
 		if (converted instanceof ArrayType arrayType && !arrayType.dimensions().isEmpty()) {
-			Dimension varargsDimension = (Dimension) arrayType.dimensions().removeLast();
+			Dimension varargsDimension = (Dimension) arrayType.dimensions().remove(arrayType.dimensions().size() - 1);
 			while (!varargsDimension.annotations().isEmpty()) {
 				declaration.varargsAnnotations().add(varargsDimension.annotations().remove(0));
 			}
@@ -2591,7 +2592,7 @@ class JavacConverter {
 						}
 					}
 					return stmts.stream();
-				}).collect(Collectors.collect(Collectors.toList()));
+				}).collect(Collectors.toList());
 
 				for(JCStatement jcs : allFlat ) {
 					Statement s1 = null;
@@ -3470,9 +3471,9 @@ class JavacConverter {
 	private Modifier convert(shaded.javax.lang.model.element.Modifier javac, int startPos, int endPos) {
 		Modifier res = modifierToDom(javac);
 		if (startPos >= 0 && endPos >= startPos && endPos <= this.rawText.length()) {
-			int indOf = this.rawText.indexOf(res.getKeyword().toString(), startPos, endPos);
+			int indOf = this.rawText.substring(startPos, endPos).indexOf(res.getKeyword().toString());
 			if( indOf != -1 ) {
-				res.setSourceRange(indOf, res.getKeyword().toString().length());
+				res.setSourceRange(startPos + indOf, res.getKeyword().toString().length());
 			}
 		}
 		return res;
@@ -3694,10 +3695,14 @@ class JavacConverter {
 					}
 				}
 				if( enumConstant.init instanceof JCNewClass jcnc ) {
-					if( jcnc.def instanceof JCClassDecl jccd) {
+					if( jcnc.def != null) {
+						JCClassDecl jccd = jcnc.def;
 						int blockStarts = jcnc.getStartPosition(); //+ (enumName == null ? 0 : enumName.length());
-						if(jcnc.getArguments() != null && !jcnc.getArguments().isEmpty() && jcnc.getArguments().get(jcnc.getArguments().length()-1) instanceof JCTree lastArg) {
-							blockStarts = lastArg.getEndPosition(this.javacCompilationUnit.endPositions);
+						if(jcnc.getArguments() != null && !jcnc.getArguments().isEmpty() ) {
+							JCTree lastArg = jcnc.getArguments().get(jcnc.getArguments().length()-1);
+							if( lastArg != null ) {
+								blockStarts = lastArg.getEndPosition(this.javacCompilationUnit.endPositions);
+							}
 						}
 						int endPos = jcnc.getEndPosition(this.javacCompilationUnit.endPositions);
 						AnonymousClassDeclaration e = createAnonymousClassDeclaration(jccd, enumConstantDeclaration);

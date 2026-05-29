@@ -39,7 +39,7 @@ public class JavacDOMUtil {
 	/**
 	 * Find a match for text in content, handling Unicode escapes.
 	 * This method searches for the given text within the content string, taking into account
-	 * Unicode escape sequences (\uXXXX) which may be used in Java source files.
+	 * Unicode escape sequences (backslash-u followed by 4 hex digits) which may be used in Java source files.
 	 *
 	 * Copied from org.eclipse.jdt.internal.javac.JavacUtils.findMatch()
 	 *
@@ -84,10 +84,10 @@ public class JavacDOMUtil {
 		char sourceChar = content.charAt(cursor);
 		int sourceLength = 1;
 
-		// Handle Unicode escape sequences: \uXXXX
+		// Handle Unicode escape sequences: backslash-u followed by hex digits
 		if (sourceChar == '\\' && cursor + 1 < searchEnd && content.charAt(cursor + 1) == 'u') {
 			int hexOffset = cursor + 2;
-			// Skip additional 'u' characters (\uuuuXXXX is valid)
+			// Skip additional 'u' characters (multiple u's are valid in Java)
 			while (hexOffset < searchEnd && content.charAt(hexOffset) == 'u') {
 				hexOffset++;
 			}

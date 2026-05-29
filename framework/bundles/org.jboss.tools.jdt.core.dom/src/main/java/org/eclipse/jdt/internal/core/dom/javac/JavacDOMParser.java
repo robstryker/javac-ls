@@ -192,6 +192,9 @@ public class JavacDOMParser {
 			Scanner javacScanner = scanForComments(comments, result, context, sourceContent, converter);
 			addCommentsToUnit(comments, result);
 
+			// Initialize comment mapper to associate comments with AST nodes
+			JavacDomPackageAccessor.initCommentMapper(result, sourceContent.toCharArray());
+
 			// Optionally resolve bindings
 			if (resolveBindings) {
 				try {
@@ -322,7 +325,7 @@ public class JavacDOMParser {
 	}
 
 	/**
-	 * Scan for comments in the source using javac's scanner.
+	 * Scan for comments in the source using javac's tokenizer.
 	 */
 	private Scanner scanForComments(
 			List<Comment> comments,
@@ -348,14 +351,14 @@ public class JavacDOMParser {
 			}
 		};
 
-		Scanner javacScanner = new Scanner(scannerFactory, commentTokenizer);
-
-		// Consume all tokens to populate comments
+		// Directly drive the tokenizer to trigger comment callbacks
+		shaded.com.sun.tools.javac.parser.Tokens.Token token;
 		do {
-			javacScanner.nextToken();
-		} while (javacScanner.token() != null && javacScanner.token().kind != TokenKind.EOF);
+			token = commentTokenizer.readToken();
+		} while (token != null && token.kind != TokenKind.EOF);
 
-		return javacScanner;
+		// Return a scanner for compatibility (though not used after this method)
+		return scannerFactory.newScanner(rawText, false);
 	}
 
 	/**

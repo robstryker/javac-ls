@@ -92,4 +92,12 @@ public class JavacDomPackageAccessor {
 	public static void internalSetEscapedValue(TextBlock textBlock, String rawValue, String value) {
 		textBlock.internalSetEscapedValue(rawValue, value);
 	}
+
+	/**
+	 * Initializes the comment mapper for a compilation unit.
+	 * Package-private method: CompilationUnit.initCommentMapper(char[])
+	 */
+	public static void initCommentMapper(CompilationUnit cu, char[] source) {
+		cu.initCommentMapper(source);
+	}
 }
