@@ -1659,9 +1659,9 @@ class JavacConverter {
 				if (type instanceof ArrayType childArrayType) {
 					arrayType = childArrayType;
 					var extraDimensions = jcNewArray.getDimAnnotations().stream()
-						.map(annotations -> annotations.stream().map(this::convert).toList())
+						.map(annotations -> annotations.stream().map(this::convert).collect(Collectors.toList()))
 						.map(this::wrapAsDimension)
-						.toList();
+						.collect(Collectors.toList());
 					if (arrayType.dimensions().isEmpty()) {
 						arrayType.dimensions().addAll(extraDimensions);
 					} else {
@@ -1703,10 +1703,10 @@ class JavacConverter {
 					if (!jcNewArray.getAnnotations().isEmpty()) {
 						arrayType.dimensions().add(wrapAsDimension(jcNewArray.getAnnotations().stream()
 							.map(this::convert)
-							.toList()));
+							.collect(Collectors.toList())));
 					} else if (!jcNewArray.getDimAnnotations().isEmpty()) {
 						jcNewArray.getDimAnnotations().stream()
-							.map(dimAnnotations -> dimAnnotations.stream().map(this::convert).toList())
+							.map(dimAnnotations -> dimAnnotations.stream().map(this::convert).collect(Collectors.toList()))
 							.map(this::wrapAsDimension)
 							.forEach(arrayType.dimensions()::add);
 					} else {
@@ -2041,7 +2041,7 @@ class JavacConverter {
 		commonSettings(initializer, jcNewArray);
 		if (!jcNewArray.getInitializers().isEmpty()) {
 			jcNewArray.getInitializers().stream().map(this::convertExpression).filter(Objects::nonNull).forEach(initializer.expressions()::add);
-			int start = ((Expression)initializer.expressions().getFirst()).getStartPosition() - 1;
+			int start = ((Expression)initializer.expressions().get(0)).getStartPosition() - 1;
 			while (start >= 0 && this.rawText.charAt(start) != '{') {
 				start--;
 			}
@@ -2442,20 +2442,20 @@ class JavacConverter {
 						.filter(VariableDeclarationStatement.class::isInstance)
 						.map(VariableDeclarationStatement.class::cast)
 						.filter(x -> x.getType().getStartPosition() == jcVariableDecl.vartype.getStartPosition())
-						.toList();
+						.collect(Collectors.toList());
 				} else if( parent instanceof ForStatement decl) {
 					// TODO somehow doubt this will work as expected
 					sameStartPosition = ((List<?>)decl.initializers()).stream()
 						.filter(VariableDeclarationExpression.class::isInstance)
 						.map(VariableDeclarationExpression.class::cast)
 						.filter(x -> x.getType().getStartPosition() == jcVariableDecl.vartype.getStartPosition())
-						.toList();
+						.collect(Collectors.toList());
 				} else if (parent instanceof SwitchStatement decl) {
 					sameStartPosition = ((List<?>)decl.statements()).stream()
 						.filter(VariableDeclarationStatement.class::isInstance)
 						.map(VariableDeclarationStatement.class::cast)
 						.filter(x -> x.getType().getStartPosition() == jcVariableDecl.vartype.getStartPosition())
-						.toList();
+						.collect(Collectors.toList());
 				}
 				if( sameStartPosition.size() >= 1 ) {
 					// factorize
@@ -2571,7 +2571,7 @@ class JavacConverter {
 				.flatMap(switchCase -> {
 					List<JCStatement> stmts = new ArrayList<>();
 					switch(switchCase.getCaseKind()) {
-						case CaseKind.STATEMENT: {
+						case STATEMENT: {
 							int numStatements = switchCase.getStatements() != null ? switchCase.getStatements().size()
 									: 0;
 							stmts.add(switchCase);
@@ -2580,7 +2580,7 @@ class JavacConverter {
 							}
 							return stmts.stream();
 						}
-						case CaseKind.RULE: {
+						case RULE: {
 							stmts.add(switchCase);
 							JCTree body = switchCase.getBody();
 							if (body instanceof JCExpressionStatement stmt) {
@@ -2592,7 +2592,7 @@ class JavacConverter {
 						}
 					}
 					return stmts.stream();
-				}).collect(Collectors.toList());
+				}).collect(Collectors.collect(Collectors.toList()));
 
 				for(JCStatement jcs : allFlat ) {
 					Statement s1 = null;
@@ -2769,7 +2769,7 @@ class JavacConverter {
 			}
 			List<Expression> expressions = new ArrayList<>();
 			jcCase.getLabels().stream().map(this::convert).forEach(expressions::add);
-			if (expressions.size() == 1 && expressions.getFirst() instanceof CaseDefaultExpression) {
+			if (expressions.size() == 1 && expressions.get(0) instanceof CaseDefaultExpression) {
 				if (this.ast.apiLevel() < AST.JLS14_INTERNAL) {
 					res.setExpression(null);
 				}
@@ -2777,11 +2777,11 @@ class JavacConverter {
 				if (this.ast.apiLevel() >= AST.JLS14_INTERNAL) {
 					res.expressions().addAll(expressions);
 				} else {
-					res.setExpression(expressions.getFirst());
+					res.setExpression(expressions.get(0));
 				}
 			}
 		}
-		if (this.ast.apiLevel() >= AST.JLS14_INTERNAL && res.expressions().size() == 1 && res.expressions().getFirst() instanceof CaseDefaultExpression) {
+		if (this.ast.apiLevel() >= AST.JLS14_INTERNAL && res.expressions().size() == 1 && res.expressions().get(0) instanceof CaseDefaultExpression) {
 			res.expressions().clear();
 		}
 		// jcCase.getStatements is processed as part of JCSwitch conversion
@@ -3105,7 +3105,7 @@ class JavacConverter {
 			ArrayType res;
 			if (t instanceof ArrayType childArrayType) {
 				res = childArrayType;
-				res.dimensions().addFirst(this.ast.newDimension());
+				res.dimensions().add(0, this.ast.newDimension());
 				commonSettings(res, jcArrayType);
 			} else {
 				int dims = countDimensions(jcArrayType);
@@ -3758,7 +3758,7 @@ class JavacConverter {
 			.filter(ASTNode.class::isInstance)
 			.map(ASTNode.class::cast)
 			.filter(Predicate.not(node::equals))
-			.toList();
+			.collect(Collectors.toList());
 	}
 
 	public DocTreePath findDocTreePath(ASTNode node) {
