@@ -33,6 +33,7 @@ Export-Package: org.jboss.tools.javac.ls.server,
  shaded.com.sun.tools.javac.parser,
  shaded.com.sun.tools.javac.tree,
  shaded.com.sun.tools.javac.util,
+ shaded.javax.lang.model.element,
  shaded.javax.lang.model.type,
  shaded.javax.tools
 Require-Bundle: org.jboss.tools.javac.ls.api

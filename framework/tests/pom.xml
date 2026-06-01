@@ -15,5 +15,6 @@
 
   <modules>
     <module>org.jboss.tools.javac.ls.server.test</module>
+    <module>org.jboss.tools.jdt.core.dom.test</module>
   </modules>
 </project>
