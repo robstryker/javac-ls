@@ -30,6 +30,8 @@ import org.eclipse.jdt.core.dom.JavacDomPackageAccessor;
 import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
+import org.eclipse.jdt.internal.compiler.problem.DefaultProblem;
+import org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +46,7 @@ import shaded.com.sun.tools.javac.parser.Tokens.TokenKind;
 import shaded.com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
 import shaded.com.sun.tools.javac.util.Context;
 import shaded.com.sun.tools.javac.util.JCDiagnostic;
+import shaded.com.sun.tools.javac.util.Log;
 import shaded.com.sun.tools.javac.util.Names;
 import shaded.com.sun.tools.javac.util.Options;
 import shaded.javax.tools.Diagnostic;
@@ -96,7 +99,7 @@ public class JavacDOMParser {
 
 		Context context = new Context();
 		try {
-			// Create Context with cached Names to avoid recreating
+			// Set up Names first (for caching)
 			Names names = new Names(context) {
 				@Override
 				public void dispose() {
@@ -105,12 +108,19 @@ public class JavacDOMParser {
 			};
 			context.put(Names.namesKey, names);
 
+			// Pre-register file manager BEFORE DiagnosticListener
+			JavacFileManager.preRegister(context);
+
+			// Now register diagnostic listener - must be before Log is initialized
+			final Map<JavaFileObject, CompilationUnit> filesToUnits = new HashMap<>();
+			DiagnosticListener<JavaFileObject> diagnosticListener = createDiagnosticListener(filesToUnits);
+			context.put(DiagnosticListener.class, diagnosticListener);
+
 			// Configure javac options
 			Options javacOptions = Options.instance(context);
 			configureJavacOptions(javacOptions, compilerOptions, resolveBindings);
 
-			// Set up file manager
-			JavacFileManager.preRegister(context);
+			// Get file manager from context (already registered)
 			JavacFileManager fileManager = (JavacFileManager) context.get(JavaFileManager.class);
 
 			// Configure classpath if provided
@@ -130,22 +140,19 @@ public class JavacDOMParser {
 			AST ast = createAST(compilerOptions, apiLevel, context);
 			CompilationUnit result = ast.newCompilationUnit();
 
-			// Set up diagnostic listener to capture problems
-			Map<JavaFileObject, CompilationUnit> filesToUnits = new HashMap<>();
+			// Now populate the file-to-unit mapping for the diagnostic listener
 			filesToUnits.put(fileObject, result);
-			DiagnosticListener<JavaFileObject> diagnosticListener = createDiagnosticListener(filesToUnits, compilerOptions, context);
-			context.put(DiagnosticListener.class, diagnosticListener);
 
-			// Create compiler and task
+			// Create compiler and task using JavacTool with context
 			var compiler = ToolProvider.getSystemJavaCompiler();
 			JavacTask task = ((JavacTool) compiler).getTask(
 				null,           // out
 				fileManager,    // file manager
-				null,           // already in context
+				null,           // diagnostic listener already in context
 				List.of(),      // options already set in context
 				List.of(),      // classes to compile (none)
 				List.of(fileObject),  // source files
-				context
+				context         // context with options and listener
 			);
 
 			// Configure javac to keep comments and positions
@@ -155,14 +162,18 @@ public class JavacDOMParser {
 			// Parse
 			JCCompilationUnit javacUnit = null;
 			try {
-				var elements = task.parse().iterator();
+				// Fully consume the parse iterator to ensure diagnostics are reported
+				var parseResults = task.parse();
+				for (var element : parseResults) {
+					if (javacUnit == null) {
+						javacUnit = (JCCompilationUnit) element;
+					}
+				}
 
 				// After parsing, disable extra features for any further parsing during resolution
 				javac.keepComments = javac.genEndPos = javac.lineDebugInfo = false;
 
-				if (elements.hasNext()) {
-					javacUnit = (JCCompilationUnit) elements.next();
-				}
+				LOG.debug("Parsing complete, diagnostics should now be available");
 			} catch (IOException ex) {
 				LOG.error("Failed to parse source", ex);
 				return result;
@@ -195,16 +206,22 @@ public class JavacDOMParser {
 			// Initialize comment mapper to associate comments with AST nodes
 			JavacDomPackageAccessor.initCommentMapper(result, sourceContent.toCharArray());
 
-			// Optionally resolve bindings
-			if (resolveBindings) {
-				try {
-					task.analyze();
+			// Always analyze to get diagnostics (errors/warnings)
+			// Even if we don't resolve bindings, we need analysis for problem reporting
+			try {
+				// Fully consume the analyze iterator to ensure diagnostics are reported
+				var analyzeResults = task.analyze();
+				for (var element : analyzeResults) {
+					// Just consume the results
+				}
+				LOG.debug("Analysis complete, diagnostics reported");
+				if (resolveBindings) {
 					// TODO: Create and attach JavacBindingResolver
 					// For now, bindings won't be available
 					LOG.debug("Binding resolution requested but not yet implemented");
-				} catch (IOException ex) {
-					LOG.error("Failed to analyze for bindings", ex);
 				}
+			} catch (IOException ex) {
+				LOG.error("Failed to analyze", ex);
 			}
 
 			return result;
@@ -307,21 +324,90 @@ public class JavacDOMParser {
 	 * Create diagnostic listener that forwards problems to the CompilationUnit.
 	 */
 	private DiagnosticListener<JavaFileObject> createDiagnosticListener(
-			Map<JavaFileObject, CompilationUnit> filesToUnits,
-			Map<String, String> compilerOptions,
-			Context context) {
+			Map<JavaFileObject, CompilationUnit> filesToUnits) {
 
-		return diagnostic -> {
-			JavaFileObject source = diagnostic.getSource();
-			if (source != null) {
-				CompilationUnit unit = filesToUnits.get(source);
-				if (unit != null) {
-					// TODO: Convert Diagnostic to IProblem
-					// For now, just log
-					LOG.debug("Diagnostic: {} at line {}", diagnostic.getMessage(null), diagnostic.getLineNumber());
+		// Collect problems for each compilation unit
+		Map<CompilationUnit, List<org.eclipse.jdt.core.compiler.IProblem>> unitProblems = new HashMap<>();
+
+		return new DiagnosticListener<JavaFileObject>() {
+			@Override
+			public void report(Diagnostic<? extends JavaFileObject> diagnostic) {
+				LOG.debug("Diagnostic received: {} at line {}", diagnostic.getMessage(null), diagnostic.getLineNumber());
+				JavaFileObject source = diagnostic.getSource();
+				if (source != null) {
+					CompilationUnit unit = filesToUnits.get(source);
+
+					// If not found, javac may have wrapped it - match by URI instead
+					if (unit == null) {
+						URI sourceUri = source.toUri();
+						for (var entry : filesToUnits.entrySet()) {
+							if (entry.getKey().toUri().equals(sourceUri)) {
+								unit = entry.getValue();
+								break;
+							}
+						}
+					}
+
+					if (unit != null) {
+						// Convert javac Diagnostic to Eclipse IProblem
+						org.eclipse.jdt.core.compiler.IProblem problem = convertDiagnostic(diagnostic, source.getName());
+						unitProblems.computeIfAbsent(unit, k -> new ArrayList<>()).add(problem);
+
+						// Set problems on unit after collection
+						List<org.eclipse.jdt.core.compiler.IProblem> problems = unitProblems.get(unit);
+						org.eclipse.jdt.core.compiler.IProblem[] problemArray = new org.eclipse.jdt.core.compiler.IProblem[problems.size()];
+						for (int i = 0; i < problems.size(); i++) {
+							Object o = problems.get(i);
+							org.eclipse.jdt.core.compiler.IProblem o2 = (org.eclipse.jdt.core.compiler.IProblem)o;
+							problemArray[i] = o2;
+						}
+						JavacDomPackageAccessor.setProblems(unit, problemArray);
+						LOG.debug("Set {} problems on unit", problems.size());
+					}
 				}
 			}
 		};
+	}
+
+	/**
+	 * Convert javac Diagnostic to Eclipse IProblem.
+	 */
+	private IProblem convertDiagnostic(shaded.javax.tools.Diagnostic<? extends JavaFileObject> diagnostic, String fileName) {
+		// Map javac diagnostic kind to Eclipse severity
+		int severity;
+		switch (diagnostic.getKind()) {
+			case ERROR:
+				severity = ProblemSeverities.Error;
+				break;
+			case WARNING:
+			case MANDATORY_WARNING:
+				severity = ProblemSeverities.Warning;
+				break;
+			default:
+				severity = ProblemSeverities.Info;
+		}
+
+		// Get position information
+		int startPosition = (int) diagnostic.getStartPosition();
+		int endPosition = (int) diagnostic.getEndPosition();
+		int lineNumber = (int) diagnostic.getLineNumber();
+		int columnNumber = (int) diagnostic.getColumnNumber();
+
+		// Get message
+		String message = diagnostic.getMessage(null);
+
+		// Create DefaultProblem
+		return new DefaultProblem(
+			fileName.toCharArray(),
+			message,
+			0, // problem id - using 0 for generic javac problems
+			new String[0], // string arguments
+			severity,
+			startPosition >= 0 ? startPosition : 0,
+			endPosition >= 0 ? endPosition : 0,
+			lineNumber >= 0 ? lineNumber : 0,
+			columnNumber >= 0 ? columnNumber : 0
+		);
 	}
 
 	/**

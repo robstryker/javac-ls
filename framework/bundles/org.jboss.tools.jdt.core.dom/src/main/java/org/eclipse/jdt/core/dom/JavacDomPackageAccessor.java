@@ -100,4 +100,12 @@ public class JavacDomPackageAccessor {
 	public static void initCommentMapper(CompilationUnit cu, char[] source) {
 		cu.initCommentMapper(source);
 	}
+
+	/**
+	 * Sets the problems for a compilation unit.
+	 * Package-private method: CompilationUnit.setProblems(IProblem[])
+	 */
+	public static void setProblems(CompilationUnit cu, org.eclipse.jdt.core.compiler.IProblem[] problems) {
+		cu.setProblems(problems);
+	}
 }

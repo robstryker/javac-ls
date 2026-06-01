@@ -16,6 +16,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
+import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
@@ -235,5 +236,31 @@ public class JavacDOMParserTest {
 
 		assertNotNull("Type should have modifiers", type.modifiers());
 		assertTrue("Should have at least 2 modifiers (public + @Deprecated)", type.modifiers().size() >= 2);
+	}
+
+	@Test
+	public void testProblemsReporting() {
+		// Code with obvious syntax error
+		String source = """
+			public class ErrorTest {
+				this is not valid java syntax at all!
+			}
+			""";
+
+		JavacDOMParser parser = new JavacDOMParser();
+		CompilationUnit cu = parser.parse(source, "ErrorTest.java", null, AST.JLS21, null, false);
+
+		assertNotNull("CompilationUnit should not be null", cu);
+
+		IProblem[] problems = cu.getProblems();
+		assertNotNull("Problems array should not be null", problems);
+		assertTrue("Should have at least one problem, got: " + problems.length, problems.length > 0);
+
+		// Verify problem details
+		for (IProblem problem : problems) {
+			assertNotNull("Problem should not be null", problem);
+			assertTrue("Problem should have a message", problem.getMessage() != null && !problem.getMessage().isEmpty());
+			assertTrue("Problem should be an error or warning", problem.isError() || problem.isWarning());
+		}
 	}
 }
