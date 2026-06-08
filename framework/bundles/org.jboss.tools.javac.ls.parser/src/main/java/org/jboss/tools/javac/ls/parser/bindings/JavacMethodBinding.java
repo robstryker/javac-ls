@@ -17,18 +17,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import org.eclipse.jdt.core.dom.IAnnotationBinding;
-import org.eclipse.jdt.core.dom.IBinding;
-import org.eclipse.jdt.core.dom.IMethodBinding;
-import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.core.dom.IVariableBinding;
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
-import org.eclipse.jdt.core.dom.JavacBindingResolver.BindingKeyException;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.Modifier;
-import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver.BindingKeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,9 +35,16 @@ import shaded.com.sun.tools.javac.code.Type;
 import shaded.com.sun.tools.javac.code.Type.ForAll;
 import shaded.com.sun.tools.javac.code.Type.JCNoType;
 import shaded.com.sun.tools.javac.code.Type.MethodType;
-import shaded.com.sun.tools.javac.code.Type.TypeVar;
 import shaded.com.sun.tools.javac.util.ListBuffer;
 import shaded.javax.lang.model.type.ExecutableType;
+import shaded.org.eclipse.jdt.core.dom.IAnnotationBinding;
+import shaded.org.eclipse.jdt.core.dom.IBinding;
+import shaded.org.eclipse.jdt.core.dom.IMethodBinding;
+import shaded.org.eclipse.jdt.core.dom.ITypeBinding;
+import shaded.org.eclipse.jdt.core.dom.IVariableBinding;
+import shaded.org.eclipse.jdt.core.dom.MethodDeclaration;
+import shaded.org.eclipse.jdt.core.dom.Modifier;
+import shaded.org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 
 public abstract class JavacMethodBinding implements IMethodBinding {
 

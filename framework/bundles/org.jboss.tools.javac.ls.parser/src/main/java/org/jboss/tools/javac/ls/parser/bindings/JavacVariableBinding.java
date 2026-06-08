@@ -15,27 +15,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.ASTVisitor;
-import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
-import org.eclipse.jdt.core.dom.Block;
-import org.eclipse.jdt.core.dom.FieldDeclaration;
-import org.eclipse.jdt.core.dom.IAnnotationBinding;
-import org.eclipse.jdt.core.dom.IBinding;
-import org.eclipse.jdt.core.dom.IMethodBinding;
-import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.core.dom.IVariableBinding;
-import org.eclipse.jdt.core.dom.Initializer;
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
-import org.eclipse.jdt.core.dom.JavacBindingResolver.BindingKeyException;
-import org.eclipse.jdt.core.dom.LambdaExpression;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
-import org.eclipse.jdt.core.dom.VariableDeclaration;
-import org.eclipse.jdt.core.dom.VariableDeclarationExpression;
-import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
-import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver.BindingKeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +31,25 @@ import shaded.com.sun.tools.javac.code.Type;
 import shaded.com.sun.tools.javac.code.Type.TypeVar;
 
 import shaded.javax.lang.model.element.ElementKind;
+import shaded.org.eclipse.jdt.core.dom.AST;
+import shaded.org.eclipse.jdt.core.dom.ASTNode;
+import shaded.org.eclipse.jdt.core.dom.ASTVisitor;
+import shaded.org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
+import shaded.org.eclipse.jdt.core.dom.Block;
+import shaded.org.eclipse.jdt.core.dom.FieldDeclaration;
+import shaded.org.eclipse.jdt.core.dom.IAnnotationBinding;
+import shaded.org.eclipse.jdt.core.dom.IBinding;
+import shaded.org.eclipse.jdt.core.dom.IMethodBinding;
+import shaded.org.eclipse.jdt.core.dom.ITypeBinding;
+import shaded.org.eclipse.jdt.core.dom.IVariableBinding;
+import shaded.org.eclipse.jdt.core.dom.Initializer;
+import shaded.org.eclipse.jdt.core.dom.LambdaExpression;
+import shaded.org.eclipse.jdt.core.dom.MethodDeclaration;
+import shaded.org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import shaded.org.eclipse.jdt.core.dom.VariableDeclaration;
+import shaded.org.eclipse.jdt.core.dom.VariableDeclarationExpression;
+import shaded.org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import shaded.org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 
 public abstract class JavacVariableBinding implements IVariableBinding {
 
@@ -355,7 +355,7 @@ public abstract class JavacVariableBinding implements IVariableBinding {
 		if (node == null) {
 			return null;
 		}
-		org.eclipse.jdt.core.dom.Type declType = null;
+		shaded.org.eclipse.jdt.core.dom.Type declType = null;
 		if (node instanceof SingleVariableDeclaration decl) {
 			declType = decl.getType();
 		} else if (node instanceof VariableDeclarationFragment fragment) {

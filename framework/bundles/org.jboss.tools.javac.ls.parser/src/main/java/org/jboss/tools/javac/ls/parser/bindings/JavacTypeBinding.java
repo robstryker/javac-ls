@@ -23,28 +23,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
-import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.BodyDeclaration;
-import org.eclipse.jdt.core.dom.ClassInstanceCreation;
-import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.FieldDeclaration;
-import org.eclipse.jdt.core.dom.Initializer;
-import org.eclipse.jdt.core.dom.LambdaExpression;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.RecordDeclaration;
-import org.eclipse.jdt.core.dom.IAnnotationBinding;
-import org.eclipse.jdt.core.dom.IBinding;
-import org.eclipse.jdt.core.dom.IMethodBinding;
-import org.eclipse.jdt.core.dom.IModuleBinding;
-import org.eclipse.jdt.core.dom.IPackageBinding;
-import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.core.dom.IVariableBinding;
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
-import org.eclipse.jdt.core.dom.JavacBindingResolver.BindingKeyException;
-import org.eclipse.jdt.core.dom.Modifier;
-import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver.BindingKeyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,6 +66,26 @@ import shaded.javax.lang.model.type.ExecutableType;
 import shaded.javax.lang.model.type.NullType;
 import shaded.javax.lang.model.type.TypeKind;
 import shaded.javax.tools.JavaFileObject;
+import shaded.org.eclipse.jdt.core.dom.ASTNode;
+import shaded.org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
+import shaded.org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
+import shaded.org.eclipse.jdt.core.dom.BodyDeclaration;
+import shaded.org.eclipse.jdt.core.dom.ClassInstanceCreation;
+import shaded.org.eclipse.jdt.core.dom.CompilationUnit;
+import shaded.org.eclipse.jdt.core.dom.FieldDeclaration;
+import shaded.org.eclipse.jdt.core.dom.IAnnotationBinding;
+import shaded.org.eclipse.jdt.core.dom.IBinding;
+import shaded.org.eclipse.jdt.core.dom.IMethodBinding;
+import shaded.org.eclipse.jdt.core.dom.IModuleBinding;
+import shaded.org.eclipse.jdt.core.dom.IPackageBinding;
+import shaded.org.eclipse.jdt.core.dom.ITypeBinding;
+import shaded.org.eclipse.jdt.core.dom.IVariableBinding;
+import shaded.org.eclipse.jdt.core.dom.Initializer;
+import shaded.org.eclipse.jdt.core.dom.LambdaExpression;
+import shaded.org.eclipse.jdt.core.dom.MethodDeclaration;
+import shaded.org.eclipse.jdt.core.dom.Modifier;
+import shaded.org.eclipse.jdt.core.dom.RecordDeclaration;
+import shaded.org.eclipse.jdt.core.dom.TypeDeclaration;
 
 public abstract class JavacTypeBinding implements ITypeBinding {
 
@@ -566,7 +566,7 @@ public abstract class JavacTypeBinding implements ITypeBinding {
 		}
 		if (typeToBuild.isPrimitiveOrVoid()) {
 			/**
-			 * @see org.eclipse.jdt.core.Signature
+			 * @see shaded.org.eclipse.jdt.core.Signature
 			 */
 			switch (typeToBuild.getKind()) {
 			case BYTE: builder.append('B'); return;

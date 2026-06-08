@@ -12,14 +12,14 @@ package org.jboss.tools.javac.ls.parser.bindings;
 
 import java.util.Objects;
 
-import org.eclipse.jdt.core.dom.IAnnotationBinding;
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
-import org.eclipse.jdt.core.dom.IBinding;
-import org.eclipse.jdt.core.dom.IModuleBinding;
-import org.eclipse.jdt.core.dom.IPackageBinding;
-import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver;
 
 import shaded.com.sun.tools.javac.code.Symbol.PackageSymbol;
+import shaded.org.eclipse.jdt.core.dom.IAnnotationBinding;
+import shaded.org.eclipse.jdt.core.dom.IBinding;
+import shaded.org.eclipse.jdt.core.dom.IModuleBinding;
+import shaded.org.eclipse.jdt.core.dom.IPackageBinding;
+import shaded.org.eclipse.jdt.core.dom.ITypeBinding;
 
 public abstract class JavacPackageBinding implements IPackageBinding {
 

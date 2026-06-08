@@ -9,34 +9,33 @@
  * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
 package org.jboss.tools.javac.ls.parser.bindings;
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
-
 import java.util.Objects;
 
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
-import org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
-import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.EnumDeclaration;
-import org.eclipse.jdt.core.dom.GenericRecoveredTypeBinding;
-import org.eclipse.jdt.core.dom.IMethodBinding;
-import org.eclipse.jdt.core.dom.IPackageBinding;
-import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.core.dom.IVariableBinding;
-import org.eclipse.jdt.core.dom.IntersectionType;
-import org.eclipse.jdt.core.dom.ParameterizedType;
-import org.eclipse.jdt.core.dom.QualifiedName;
-import org.eclipse.jdt.core.dom.SimpleName;
-import org.eclipse.jdt.core.dom.SimpleType;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver;
 
 import shaded.com.sun.tools.javac.code.Type.ArrayType;
 import shaded.com.sun.tools.javac.code.Type.PackageType;
+import shaded.org.eclipse.jdt.core.dom.ASTNode;
+import shaded.org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
+import shaded.org.eclipse.jdt.core.dom.AnonymousClassDeclaration;
+import shaded.org.eclipse.jdt.core.dom.CompilationUnit;
+import shaded.org.eclipse.jdt.core.dom.EnumDeclaration;
+import shaded.org.eclipse.jdt.core.dom.GenericRecoveredTypeBinding;
+import shaded.org.eclipse.jdt.core.dom.IMethodBinding;
+import shaded.org.eclipse.jdt.core.dom.IPackageBinding;
+import shaded.org.eclipse.jdt.core.dom.ITypeBinding;
+import shaded.org.eclipse.jdt.core.dom.IVariableBinding;
+import shaded.org.eclipse.jdt.core.dom.IntersectionType;
+import shaded.org.eclipse.jdt.core.dom.ParameterizedType;
+import shaded.org.eclipse.jdt.core.dom.QualifiedName;
+import shaded.org.eclipse.jdt.core.dom.SimpleName;
+import shaded.org.eclipse.jdt.core.dom.SimpleType;
 
 public class JavacRecoveredTypeBinding extends JavacTypeBinding {
 
 	private final ASTNode domNode;
 
-	public JavacRecoveredTypeBinding(shaded.com.sun.tools.javac.code.Type type, org.eclipse.jdt.core.dom.ASTNode domName, JavacBindingResolver resolver) {
+	public JavacRecoveredTypeBinding(shaded.com.sun.tools.javac.code.Type type, shaded.org.eclipse.jdt.core.dom.ASTNode domName, JavacBindingResolver resolver) {
 		super(type, type != null ? type.tsym : null, null, null, false, resolver);
 		this.domNode = domName;
 	}
@@ -56,12 +55,12 @@ public class JavacRecoveredTypeBinding extends JavacTypeBinding {
 	@Override
 	public JavacTypeBinding getComponentType() {
 		if (this.type instanceof ArrayType javacArrayType && javacArrayType.isErroneous()) {
-			if (getDimensions() == 1 && this.domNode instanceof org.eclipse.jdt.core.dom.ArrayType domArrayType) {
+			if (getDimensions() == 1 && this.domNode instanceof shaded.org.eclipse.jdt.core.dom.ArrayType domArrayType) {
 				return this.resolver.bindings.getRecoveredTypeBinding(javacArrayType.elemtype, domArrayType.getElementType());
 			}
-			if (this.domNode instanceof org.eclipse.jdt.core.dom.Type t) {
+			if (this.domNode instanceof shaded.org.eclipse.jdt.core.dom.Type t) {
 				return this.resolver.bindings.getRecoveredTypeBinding(javacArrayType.elemtype, t);
-			} else if (this.domNode instanceof org.eclipse.jdt.core.dom.Name n) {
+			} else if (this.domNode instanceof shaded.org.eclipse.jdt.core.dom.Name n) {
 				return this.resolver.bindings.getRecoveredTypeBinding(javacArrayType.elemtype, n);
 			}
 		}
@@ -73,9 +72,9 @@ public class JavacRecoveredTypeBinding extends JavacTypeBinding {
 		if (this.type != null) {
 			return (JavacTypeBinding)super.getElementType();
 		}
-		if (this.domNode instanceof org.eclipse.jdt.core.dom.ArrayType domArrayType) {
-			org.eclipse.jdt.core.dom.Type cursor = domArrayType.getElementType();
-			while (cursor instanceof org.eclipse.jdt.core.dom.ArrayType at) {
+		if (this.domNode instanceof shaded.org.eclipse.jdt.core.dom.ArrayType domArrayType) {
+			shaded.org.eclipse.jdt.core.dom.Type cursor = domArrayType.getElementType();
+			while (cursor instanceof shaded.org.eclipse.jdt.core.dom.ArrayType at) {
 				cursor = at.getElementType();
 			}
 			return this.resolver.bindings.getRecoveredTypeBinding(this.type, cursor);
@@ -108,7 +107,7 @@ public class JavacRecoveredTypeBinding extends JavacTypeBinding {
 		return super.getPackage();
 	}
 
-	private org.eclipse.jdt.core.dom.Name domName() {
+	private shaded.org.eclipse.jdt.core.dom.Name domName() {
 		ASTNode toConsider = this.domNode;
 		if (toConsider instanceof ParameterizedType parameterizedType) {
 			toConsider = parameterizedType.getType();
@@ -116,7 +115,7 @@ public class JavacRecoveredTypeBinding extends JavacTypeBinding {
 		if (toConsider instanceof SimpleType type) {
 			return type.getName();
 		}
-		if (toConsider instanceof org.eclipse.jdt.core.dom.Name name) {
+		if (toConsider instanceof shaded.org.eclipse.jdt.core.dom.Name name) {
 			return name;
 		}
 		return null;
@@ -201,7 +200,7 @@ public class JavacRecoveredTypeBinding extends JavacTypeBinding {
 	}
 	@Override
 	public ITypeBinding getTypeDeclaration() {
-		if (isParameterizedType() && this.domNode instanceof org.eclipse.jdt.core.dom.Type domType) {
+		if (isParameterizedType() && this.domNode instanceof shaded.org.eclipse.jdt.core.dom.Type domType) {
 			return new GenericRecoveredTypeBinding(this.resolver, domType, this);
 		}
 		return super.getTypeDeclaration();

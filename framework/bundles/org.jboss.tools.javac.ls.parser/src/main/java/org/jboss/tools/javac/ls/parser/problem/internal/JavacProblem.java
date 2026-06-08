@@ -13,7 +13,7 @@
 
 package org.jboss.tools.javac.ls.parser.problem.internal;
 
-import org.eclipse.jdt.internal.compiler.problem.DefaultProblem;
+import shaded.org.eclipse.jdt.internal.compiler.problem.DefaultProblem;
 
 public class JavacProblem extends DefaultProblem {
 	private String javacCode;

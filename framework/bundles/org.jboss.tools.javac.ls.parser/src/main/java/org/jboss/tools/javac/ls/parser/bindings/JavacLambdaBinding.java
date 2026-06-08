@@ -13,21 +13,21 @@ package org.jboss.tools.javac.ls.parser.bindings;
 import java.util.List;
 import java.util.Objects;
 
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
-import org.eclipse.jdt.core.dom.FieldDeclaration;
-import org.eclipse.jdt.core.dom.IBinding;
-import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.core.dom.LambdaExpression;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.Modifier;
-import org.eclipse.jdt.core.dom.SimpleName;
-import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
-import org.eclipse.jdt.core.dom.VariableDeclaration;
-import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver;
 
 import shaded.com.sun.tools.javac.code.Type;
 import shaded.com.sun.tools.javac.tree.JCTree.JCLambda;
+import shaded.org.eclipse.jdt.core.dom.ASTNode;
+import shaded.org.eclipse.jdt.core.dom.FieldDeclaration;
+import shaded.org.eclipse.jdt.core.dom.IBinding;
+import shaded.org.eclipse.jdt.core.dom.ITypeBinding;
+import shaded.org.eclipse.jdt.core.dom.LambdaExpression;
+import shaded.org.eclipse.jdt.core.dom.MethodDeclaration;
+import shaded.org.eclipse.jdt.core.dom.Modifier;
+import shaded.org.eclipse.jdt.core.dom.SimpleName;
+import shaded.org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import shaded.org.eclipse.jdt.core.dom.VariableDeclaration;
+import shaded.org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 
 public class JavacLambdaBinding extends JavacMethodBinding {
 
