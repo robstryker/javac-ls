@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaCoreConstants;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.junit.After;
@@ -41,9 +41,9 @@ public class DOMCacheTest {
 		tempDir = Files.createTempDirectory("dom-cache-test");
 
 		compilerOptions = new HashMap<>();
-		compilerOptions.put(JavaCore.COMPILER_SOURCE, "17");
-		compilerOptions.put(JavaCore.COMPILER_COMPLIANCE, "17");
-		compilerOptions.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, "17");
+		compilerOptions.put(JavaCoreConstants.COMPILER_SOURCE, "17");
+		compilerOptions.put(JavaCoreConstants.COMPILER_COMPLIANCE, "17");
+		compilerOptions.put(JavaCoreConstants.COMPILER_CODEGEN_TARGET_PLATFORM, "17");
 	}
 
 	@After

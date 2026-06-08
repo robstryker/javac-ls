@@ -20,8 +20,13 @@ import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.FieldDeclaration;
+import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.junit.Test;
 
 /**
@@ -262,5 +267,68 @@ public class JavacDOMParserTest {
 			assertTrue("Problem should have a message", problem.getMessage() != null && !problem.getMessage().isEmpty());
 			assertTrue("Problem should be an error or warning", problem.isError() || problem.isWarning());
 		}
+	}
+
+	@Test
+	public void testBindingResolution() {
+		String source = """
+			package com.example;
+
+			public class BindingTest {
+				private String name;
+				private int count;
+
+				public String getName() {
+					return name;
+				}
+
+				public void setName(String name) {
+					this.name = name;
+				}
+			}
+			""";
+
+		JavacDOMParser parser = new JavacDOMParser();
+		CompilationUnit cu = parser.parse(source, "BindingTest.java", null, AST.JLS21, null, true);
+
+		assertNotNull("CompilationUnit should not be null", cu);
+		assertEquals("Should have 1 type", 1, cu.types().size());
+
+		TypeDeclaration type = (TypeDeclaration) cu.types().get(0);
+		assertNotNull("Type should not be null", type);
+
+		// Test type binding
+		ITypeBinding typeBinding = type.resolveBinding();
+		assertNotNull("Type binding should not be null", typeBinding);
+		assertEquals("Type name should be BindingTest", "BindingTest", typeBinding.getName());
+		assertEquals("Qualified name should be com.example.BindingTest", "com.example.BindingTest", typeBinding.getQualifiedName());
+		assertTrue("Type should be a class", typeBinding.isClass());
+
+		// Test field bindings
+		FieldDeclaration[] fields = type.getFields();
+		assertEquals("Should have 2 fields", 2, fields.length);
+
+		VariableDeclarationFragment nameField = (VariableDeclarationFragment) fields[0].fragments().get(0);
+		IVariableBinding nameBinding = nameField.resolveBinding();
+		assertNotNull("Field binding should not be null", nameBinding);
+		assertEquals("Field name should be 'name'", "name", nameBinding.getName());
+		assertTrue("Field should be a field", nameBinding.isField());
+
+		ITypeBinding fieldType = nameBinding.getType();
+		assertNotNull("Field type binding should not be null", fieldType);
+		assertEquals("Field type should be String", "String", fieldType.getName());
+
+		// Test method bindings
+		MethodDeclaration[] methods = type.getMethods();
+		assertEquals("Should have 2 methods", 2, methods.length);
+
+		MethodDeclaration getNameMethod = methods[0];
+		IMethodBinding getNameBinding = getNameMethod.resolveBinding();
+		assertNotNull("Method binding should not be null", getNameBinding);
+		assertEquals("Method name should be 'getName'", "getName", getNameBinding.getName());
+
+		ITypeBinding returnType = getNameBinding.getReturnType();
+		assertNotNull("Return type binding should not be null", returnType);
+		assertEquals("Return type should be String", "String", returnType.getName());
 	}
 }

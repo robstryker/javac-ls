@@ -24,8 +24,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.JavaCoreConstants;
 import org.eclipse.jdt.core.dom.*;
+import org.eclipse.jdt.core.dom.JavacBindingResolver;
 import org.eclipse.jdt.core.dom.JavacDomPackageAccessor;
 import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
@@ -187,7 +188,7 @@ public class JavacDOMParser {
 			}
 
 			// Convert javac tree to DOM using JavacConverter
-			boolean docEnabled = JavaCore.ENABLED.equals(compilerOptions.get(JavaCore.COMPILER_DOC_COMMENT_SUPPORT));
+			boolean docEnabled = JavaCoreConstants.ENABLED.equals(compilerOptions.get(JavaCoreConstants.COMPILER_DOC_COMMENT_SUPPORT));
 			JavacConverter converter = new JavacConverter(ast, javacUnit, context, sourceContent, docEnabled, -1);
 			converter.populateCompilationUnit(result, javacUnit);
 
@@ -218,9 +219,12 @@ public class JavacDOMParser {
 				}
 				LOG.debug("Analysis complete, diagnostics reported");
 				if (resolveBindings) {
-					// TODO: Create and attach JavacBindingResolver
-					// For now, bindings won't be available
-					LOG.debug("Binding resolution requested but not yet implemented");
+					// Create and attach JavacBindingResolver for binding resolution
+					List<JCCompilationUnit> javacCompilationUnits = List.of(javacUnit);
+					JavacBindingResolver resolver = new JavacBindingResolver(task, context, converter, javacCompilationUnits);
+					resolver.isRecoveringBindings = true;
+					JavacDomPackageAccessor.setBindingResolver(ast, resolver);
+					LOG.debug("Binding resolution enabled");
 				}
 			} catch (IOException ex) {
 				LOG.error("Failed to analyze", ex);
@@ -246,10 +250,10 @@ public class JavacDOMParser {
 	 */
 	private Map<String, String> getDefaultCompilerOptions() {
 		Map<String, String> options = new HashMap<>();
-		options.put(JavaCore.COMPILER_SOURCE, "17");
-		options.put(JavaCore.COMPILER_COMPLIANCE, "17");
-		options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, "17");
-		options.put(JavaCore.COMPILER_DOC_COMMENT_SUPPORT, JavaCore.ENABLED);
+		options.put(JavaCoreConstants.COMPILER_SOURCE, "17");
+		options.put(JavaCoreConstants.COMPILER_COMPLIANCE, "17");
+		options.put(JavaCoreConstants.COMPILER_CODEGEN_TARGET_PLATFORM, "17");
+		options.put(JavaCoreConstants.COMPILER_DOC_COMMENT_SUPPORT, JavaCoreConstants.ENABLED);
 		return options;
 	}
 
@@ -261,25 +265,25 @@ public class JavacDOMParser {
 		javacOptions.put("allowStringFolding", Boolean.FALSE.toString());
 
 		// Set source and target
-		String source = compilerOptions.get(JavaCore.COMPILER_SOURCE);
+		String source = compilerOptions.get(JavaCoreConstants.COMPILER_SOURCE);
 		if (source != null) {
 			source = normalizeVersion(source);
 			javacOptions.put(Option.SOURCE, source);
 		}
 
-		String target = compilerOptions.get(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM);
+		String target = compilerOptions.get(JavaCoreConstants.COMPILER_CODEGEN_TARGET_PLATFORM);
 		if (target != null) {
 			target = normalizeVersion(target);
 			javacOptions.put(Option.TARGET, target);
 		}
 
 		// Preview features
-		if (JavaCore.ENABLED.equals(compilerOptions.get("org.eclipse.jdt.core.compiler.problem.enablePreviewFeatures"))) {
+		if (JavaCoreConstants.ENABLED.equals(compilerOptions.get("org.eclipse.jdt.core.compiler.problem.enablePreviewFeatures"))) {
 			javacOptions.put(Option.PREVIEW, Boolean.toString(true));
 		}
 
 		// Documentation
-		if (JavaCore.ENABLED.equals(compilerOptions.get(JavaCore.COMPILER_DOC_COMMENT_SUPPORT))) {
+		if (JavaCoreConstants.ENABLED.equals(compilerOptions.get(JavaCoreConstants.COMPILER_DOC_COMMENT_SUPPORT))) {
 			if (!resolveBindings) {
 				// Minimal doclint for parsing only
 				javacOptions.put(Option.XDOCLINT_CUSTOM, "reference");
@@ -312,7 +316,7 @@ public class JavacDOMParser {
 	 * Create AST with correct settings.
 	 */
 	private AST createAST(Map<String, String> options, int level, Context context) {
-		AST ast = AST.newAST(level, JavaCore.ENABLED.equals(options.get("org.eclipse.jdt.core.compiler.problem.enablePreviewFeatures")));
+		AST ast = AST.newAST(level, JavaCoreConstants.ENABLED.equals(options.get("org.eclipse.jdt.core.compiler.problem.enablePreviewFeatures")));
 		JavacDomPackageAccessor.setDefaultNodeFlag(ast, ASTNode.ORIGINAL);
 
 		// Note: Scanner configuration (sourceLevel, complianceLevel, previewEnabled)
