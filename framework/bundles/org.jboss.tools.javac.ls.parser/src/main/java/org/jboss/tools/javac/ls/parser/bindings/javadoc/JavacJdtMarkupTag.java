@@ -8,33 +8,33 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
-package org.eclipse.jdt.internal.core.dom.javac.javadoc;
+package org.jboss.tools.javac.ls.parser.bindings.javadoc;
 
-public class JavacJdtMarkupTagAttribute {
+import java.util.Collections;
+import java.util.List;
+
+public class JavacJdtMarkupTag {
 	private final String name;
-	private final String value;
+	private final List<JavacJdtMarkupTagAttribute> attributes;
 
-	public JavacJdtMarkupTagAttribute(String name, String value) {
+	public JavacJdtMarkupTag(String name, List<JavacJdtMarkupTagAttribute> attributes) {
 		if (name == null || name.isEmpty()) {
-			throw new IllegalArgumentException("Attribute name cannot be null or empty");
-		}
-		if (value == null) {
-			throw new IllegalArgumentException("Attribute value cannot be null");
+			throw new IllegalArgumentException("Tag name cannot be null or empty");
 		}
 		this.name = name;
-		this.value = value;
+		this.attributes = attributes != null ? attributes : Collections.emptyList();
 	}
 
 	public String name() {
 		return name;
 	}
 
-	public String value() {
-		return value;
+	public List<JavacJdtMarkupTagAttribute> attributes() {
+		return attributes;
 	}
 
 	@Override
 	public String toString() {
-		return name + "=\"" + value + "\"";
+		return "@" + name + " " + attributes;
 	}
 }

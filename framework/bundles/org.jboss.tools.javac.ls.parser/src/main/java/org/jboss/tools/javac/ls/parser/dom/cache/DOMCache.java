@@ -6,7 +6,7 @@
  *
  * Contributors: Red Hat, Inc.
  ******************************************************************************/
-package org.eclipse.jdt.internal.core.dom.cache;
+package org.jboss.tools.javac.ls.parser.dom.cache;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.internal.core.dom.javac.JavacDOMParser;
+import org.jboss.tools.javac.ls.parser.bindings.JavacDOMParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -12,7 +12,7 @@
  *     Red Hat, Inc. - initial API and implementation
  *     Derived from JavacCompilationUnitResolver
  *******************************************************************************/
-package org.eclipse.jdt.internal.core.dom.javac;
+package org.jboss.tools.javac.ls.parser.bindings;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,8 +33,8 @@ import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.compiler.problem.DefaultProblem;
 import org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
-import org.eclipse.jdt.internal.javac.problem.JavacDiagnosticProblemConverter;
-import org.eclipse.jdt.internal.javac.problem.JavacProblem;
+import org.jboss.tools.javac.ls.parser.problem.internal.JavacDiagnosticProblemConverter;
+import org.jboss.tools.javac.ls.parser.problem.internal.JavacProblem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

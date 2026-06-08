@@ -22,6 +22,7 @@ import java.util.Map;
 import org.eclipse.jdt.core.JavaCoreConstants;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.jboss.tools.javac.ls.parser.dom.cache.DOMCache;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

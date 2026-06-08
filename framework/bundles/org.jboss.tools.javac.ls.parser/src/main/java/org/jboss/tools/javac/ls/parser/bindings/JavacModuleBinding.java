@@ -8,7 +8,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
-package org.eclipse.jdt.internal.core.dom.javac;
+package org.jboss.tools.javac.ls.parser.bindings;
 import org.eclipse.jdt.core.dom.JavacBindingResolver;
 
 import java.util.ArrayList;
