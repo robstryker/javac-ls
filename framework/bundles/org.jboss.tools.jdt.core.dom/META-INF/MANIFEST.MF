@@ -8,7 +8,8 @@ Bundle-RequiredExecutionEnvironment: JavaSE-17
 Require-Bundle: org.jboss.tools.rsp.launching.java;visibility:=reexport
 Import-Package: org.eclipse.jdt.core,
  org.slf4j;version="1.7.10"
-Export-Package: org.eclipse.jdt.core.compiler,
+Export-Package: org.eclipse.jdt.core,
+ org.eclipse.jdt.core.compiler,
  org.eclipse.jdt.core.dom,
  org.eclipse.jdt.internal.compiler.classfmt,
  org.eclipse.jdt.internal.compiler.problem,

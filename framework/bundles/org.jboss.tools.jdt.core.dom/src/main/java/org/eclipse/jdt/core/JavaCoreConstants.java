@@ -48,6 +48,8 @@ public class JavaCoreConstants {
 	 */
 	public static final String COMPILER_SOURCE = "org.eclipse.jdt.core.compiler.source"; //$NON-NLS-1$
 	public static final String COMPILER_COMPLIANCE = "org.eclipse.jdt.core.compiler.compliance"; //$NON-NLS-1$
+	public static final String COMPILER_CODEGEN_TARGET_PLATFORM = "org.eclipse.jdt.core.compiler.codegen.targetPlatform"; //$NON-NLS-1$
+	public static final String COMPILER_DOC_COMMENT_SUPPORT = "org.eclipse.jdt.core.compiler.doc.comment.support"; //$NON-NLS-1$
 	public static final String COMPILER_PB_ENABLE_PREVIEW_FEATURES = "org.eclipse.jdt.core.compiler.problem.enablePreviewFeatures"; //$NON-NLS-1$
 
 	/**

@@ -1,0 +1,127 @@
+/*******************************************************************************
+ * Copyright (c) 2024, Red Hat, Inc. and others.
+ *
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License 2.0
+ * which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *******************************************************************************/
+package org.eclipse.jdt.internal.core.dom.javac;
+
+import java.util.Objects;
+
+import org.eclipse.jdt.core.dom.IAnnotationBinding;
+import org.eclipse.jdt.core.dom.JavacBindingResolver;
+import org.eclipse.jdt.core.dom.IBinding;
+import org.eclipse.jdt.core.dom.IMemberValuePairBinding;
+import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.ITypeBinding;
+
+import shaded.com.sun.tools.javac.code.Attribute;
+import shaded.com.sun.tools.javac.code.Symbol.MethodSymbol;
+
+public abstract class JavacMemberValuePairBinding implements IMemberValuePairBinding {
+
+	public final JavacMethodBinding method;
+	public final Object value; // might be an attribute or a direct value
+	private final JavacBindingResolver resolver;
+
+	public JavacMemberValuePairBinding(MethodSymbol key, Object value, JavacBindingResolver resolver) {
+		this.method = resolver.bindings.getMethodBinding(key.type.asMethodType(), key, null, true, null);
+		this.value = value;
+		this.resolver = resolver;
+	}
+
+	public JavacMemberValuePairBinding(IMethodBinding defaultAnnotationMethod, JavacBindingResolver resolver) {
+		this.method = (JavacMethodBinding)defaultAnnotationMethod;
+		Object v = defaultAnnotationMethod.getDefaultValue();
+		ITypeBinding tb = defaultAnnotationMethod.getReturnType();
+		if( v == null && tb != null && tb.isArray() ) {
+			this.value = new Object[0];
+		} else {
+			this.value = v;
+		}
+		this.resolver = resolver;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		return obj instanceof JavacMemberValuePairBinding other
+				&& Objects.equals(this.resolver, other.resolver)
+				&& Objects.equals(this.method, other.method)
+				&& Objects.equals(this.value, other.value);
+	}
+	@Override
+	public int hashCode() {
+		return Objects.hash(this.resolver, this.method, this.value);
+	}
+
+	@Override
+	public IAnnotationBinding[] getAnnotations() {
+		return new IAnnotationBinding[0];
+	}
+
+	@Override
+	public int getKind() {
+		return MEMBER_VALUE_PAIR;
+	}
+
+	@Override
+	public int getModifiers() {
+		return method.getModifiers();
+	}
+
+	@Override
+	public boolean isDeprecated() {
+		return method.isDeprecated();
+	}
+
+	@Override
+	public boolean isRecovered() {
+		return this.value instanceof Attribute.Error;
+	}
+
+	@Override
+	public boolean isSynthetic() {
+		return method.isSynthetic();
+	}
+
+	@Override
+	public String getKey() {
+		// as of writing, not yet implemented for ECJ
+		// @see org.eclipse.jdt.core.dom.MemberValuePairBinding.getKey
+		return Integer.toString(System.identityHashCode(this.method));
+	}
+
+	@Override
+	public boolean isEqualTo(IBinding binding) {
+		return binding instanceof IMemberValuePairBinding other && Objects.equals(this.getKey(), other.getKey());
+	}
+
+	@Override
+	public String getName() {
+		return this.method.getName();
+	}
+
+	@Override
+	public IMethodBinding getMethodBinding() {
+		return this.method;
+	}
+
+	@Override
+	public Object getValue() {
+		return this.value instanceof Attribute attr ? this.resolver.getValueFromAttribute(attr) : this.value;
+	}
+
+	@Override
+	public boolean isDefault() {
+		return getValue() == this.method.methodSymbol.defaultValue;
+	}
+
+	@Override
+	public String toString() {
+		return getName() + " = " + getValue().toString(); //$NON-NLS-1$
+	}
+}

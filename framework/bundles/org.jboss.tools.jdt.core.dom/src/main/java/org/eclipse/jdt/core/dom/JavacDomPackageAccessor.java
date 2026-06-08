@@ -46,6 +46,14 @@ public class JavacDomPackageAccessor {
 	}
 
 	/**
+	 * Sets the binding resolver for an AST.
+	 * Package-private method: AST.setBindingResolver(AbstractBindingResolver)
+	 */
+	public static void setBindingResolver(AST ast, BindingResolver resolver) {
+		ast.setBindingResolver(resolver);
+	}
+
+	/**
 	 * Sets the parent of an AST node.
 	 * Package-private method: ASTNode.setParent(ASTNode, StructuralPropertyDescriptor)
 	 */

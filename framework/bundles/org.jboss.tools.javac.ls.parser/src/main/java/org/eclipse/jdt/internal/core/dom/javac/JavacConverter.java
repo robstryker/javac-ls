@@ -146,7 +146,7 @@ import shaded.javax.lang.model.type.TypeKind;
  * @implNote Cannot move to another package as it uses some package protected methods
  */
 @SuppressWarnings("unchecked")
-class JavacConverter {
+public class JavacConverter {
 
 	private static final Logger LOG = LoggerFactory.getLogger(JavacConverter.class);
 
@@ -155,10 +155,10 @@ class JavacConverter {
 	private static final String FAKE_IDENTIFIER = JavacDOMUtil.FAKE_IDENTIFIER_STRING;
 	public final AST ast;
 	final JCCompilationUnit javacCompilationUnit;
-	final String rawText;
+	public final String rawText;
 	private final Context context;
-	final Map<ASTNode, JCTree> domToJavac = new HashMap<>();
-	Map<JCMethodInvocation, JCTree> invocationToSiteType = new HashMap<>();
+	public final Map<ASTNode, JCTree> domToJavac = new HashMap<>();
+	public Map<JCMethodInvocation, JCTree> invocationToSiteType = new HashMap<>();
 	final Set<JCDiagnostic> javadocDiagnostics = new HashSet<>();
 	private final List<JavadocConverter> javadocConverters = new ArrayList<>();
 	final List<org.eclipse.jdt.core.dom.Comment> notAttachedComments = new ArrayList<>();
