@@ -16,15 +16,15 @@ package org.jboss.tools.javac.ls.parser.bindings;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-import org.eclipse.jdt.core.dom.IBinding;
-import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
-import org.eclipse.jdt.core.dom.JavacBindingResolver.BindingKeyException;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver.BindingKeyException;
 
 import shaded.com.sun.tools.javac.code.Symbol;
 import shaded.com.sun.tools.javac.code.Symbol.TypeVariableSymbol;
 import shaded.com.sun.tools.javac.code.Type;
 import shaded.com.sun.tools.javac.code.Type.TypeVar;
+import shaded.org.eclipse.jdt.core.dom.IBinding;
+import shaded.org.eclipse.jdt.core.dom.ITypeBinding;
 
 /**
  * Note that this isn't API and isn't part of the IBinding tree type.

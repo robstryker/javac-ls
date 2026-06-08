@@ -12,15 +12,15 @@ package org.jboss.tools.javac.ls.parser.bindings;
 
 import java.util.Objects;
 
-import org.eclipse.jdt.core.dom.IAnnotationBinding;
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
-import org.eclipse.jdt.core.dom.IBinding;
-import org.eclipse.jdt.core.dom.IMemberValuePairBinding;
-import org.eclipse.jdt.core.dom.IMethodBinding;
-import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver;
 
 import shaded.com.sun.tools.javac.code.Attribute;
 import shaded.com.sun.tools.javac.code.Symbol.MethodSymbol;
+import shaded.org.eclipse.jdt.core.dom.IAnnotationBinding;
+import shaded.org.eclipse.jdt.core.dom.IBinding;
+import shaded.org.eclipse.jdt.core.dom.IMemberValuePairBinding;
+import shaded.org.eclipse.jdt.core.dom.IMethodBinding;
+import shaded.org.eclipse.jdt.core.dom.ITypeBinding;
 
 public abstract class JavacMemberValuePairBinding implements IMemberValuePairBinding {
 
@@ -91,7 +91,7 @@ public abstract class JavacMemberValuePairBinding implements IMemberValuePairBin
 	@Override
 	public String getKey() {
 		// as of writing, not yet implemented for ECJ
-		// @see org.eclipse.jdt.core.dom.MemberValuePairBinding.getKey
+		// @see shaded.org.eclipse.jdt.core.dom.MemberValuePairBinding.getKey
 		return Integer.toString(System.identityHashCode(this.method));
 	}
 

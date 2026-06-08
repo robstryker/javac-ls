@@ -12,14 +12,13 @@ package org.jboss.tools.javac.ls.parser.bindings;
 
 import java.util.Objects;
 
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver.BindingKeyException;
+
 import shaded.javax.lang.model.type.ExecutableType;
-
-import org.eclipse.jdt.core.dom.IAnnotationBinding;
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
-import org.eclipse.jdt.core.dom.IMethodBinding;
-import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.core.dom.JavacBindingResolver.BindingKeyException;
-
+import shaded.org.eclipse.jdt.core.dom.IAnnotationBinding;
+import shaded.org.eclipse.jdt.core.dom.IMethodBinding;
+import shaded.org.eclipse.jdt.core.dom.ITypeBinding;
 import shaded.com.sun.tools.javac.code.Symbol;
 import shaded.com.sun.tools.javac.code.Symbol.ClassSymbol;
 import shaded.com.sun.tools.javac.code.Symbol.TypeSymbol;

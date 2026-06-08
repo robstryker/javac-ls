@@ -9,11 +9,11 @@
  * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
 package org.jboss.tools.javac.ls.parser.bindings;
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
-
-
 import shaded.com.sun.tools.javac.code.Symbol.ClassSymbol;
 import shaded.com.sun.tools.javac.code.Symbol.TypeSymbol;
+
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver;
+
 import shaded.com.sun.tools.javac.code.Type;
 
 /**

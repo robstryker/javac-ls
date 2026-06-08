@@ -30,13 +30,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.eclipse.jdt.core.compiler.IProblem;
-import org.eclipse.jdt.core.dom.Modifier.ModifierKeyword;
-import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
-import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
-import org.eclipse.jdt.internal.compiler.problem.DefaultProblemFactory;
-import org.eclipse.jdt.internal.compiler.problem.ProblemReporter;
-import org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
+import org.jboss.tools.javac.ls.internal.compiler.impl.CompilerOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,12 +79,16 @@ import shaded.com.sun.tools.javac.util.JCDiagnostic;
 import shaded.com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
 import shaded.com.sun.tools.javac.util.Log;
 import shaded.com.sun.tools.javac.util.Name;
-import shaded.com.sun.tools.javac.util.Position;
 import shaded.javax.lang.model.element.Modifier;
 import shaded.javax.lang.model.element.PackageElement;
 import shaded.javax.lang.model.type.TypeKind;
 import shaded.javax.tools.Diagnostic;
 import shaded.javax.tools.JavaFileObject;
+import shaded.org.eclipse.jdt.core.compiler.IProblem;
+import shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword;
+import shaded.org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
+import shaded.org.eclipse.jdt.internal.compiler.problem.DefaultProblemFactory;
+import shaded.org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
 
 public class JavacDiagnosticProblemConverter {
 	private static final Logger LOG = LoggerFactory.getLogger(JavacDiagnosticProblemConverter.class);

@@ -9,20 +9,18 @@
  * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
 package org.jboss.tools.javac.ls.parser.bindings;
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import org.eclipse.jdt.core.dom.IAnnotationBinding;
-import org.eclipse.jdt.core.dom.IBinding;
-import org.eclipse.jdt.core.dom.IModuleBinding;
-import org.eclipse.jdt.core.dom.IPackageBinding;
-import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver;
 
 import shaded.javax.lang.model.element.ModuleElement.DirectiveKind;
-
+import shaded.org.eclipse.jdt.core.dom.IAnnotationBinding;
+import shaded.org.eclipse.jdt.core.dom.IBinding;
+import shaded.org.eclipse.jdt.core.dom.IModuleBinding;
+import shaded.org.eclipse.jdt.core.dom.IPackageBinding;
+import shaded.org.eclipse.jdt.core.dom.ITypeBinding;
 import shaded.com.sun.tools.javac.code.Attribute;
 import shaded.com.sun.tools.javac.code.Directive.ExportsDirective;
 import shaded.com.sun.tools.javac.code.Directive.OpensDirective;

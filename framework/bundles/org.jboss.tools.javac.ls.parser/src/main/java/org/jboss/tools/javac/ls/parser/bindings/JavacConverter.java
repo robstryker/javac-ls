@@ -10,8 +10,6 @@
  *******************************************************************************/
 package org.jboss.tools.javac.ls.parser.bindings;
 
-import org.eclipse.jdt.core.dom.*;
-
 import static shaded.com.sun.tools.javac.code.Flags.VARARGS;
 
 import java.io.IOException;
@@ -33,17 +31,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.jboss.tools.javac.ls.internal.core.dom.util.JavacDOMUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.eclipse.jdt.core.dom.Modifier.ModifierKeyword;
-import org.eclipse.jdt.core.dom.ModuleModifier.ModuleModifierKeyword;
-import org.eclipse.jdt.core.dom.PrefixExpression.Operator;
-import org.eclipse.jdt.core.dom.PrimitiveType.Code;
-import org.eclipse.jdt.core.dom.JavacDomPackageAccessor;
-
-import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
-
-import org.eclipse.jdt.internal.core.dom.util.JavacDOMUtil;
 
 import shaded.com.sun.source.tree.CaseTree.CaseKind;
 import shaded.com.sun.source.tree.ModuleTree.ModuleKind;
@@ -140,6 +130,12 @@ import shaded.com.sun.tools.javac.util.Names;
 import shaded.com.sun.tools.javac.util.Position;
 import shaded.com.sun.tools.javac.util.Position.LineMap;
 import shaded.javax.lang.model.type.TypeKind;
+import shaded.org.eclipse.jdt.core.dom.*;
+import shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword;
+import shaded.org.eclipse.jdt.core.dom.ModuleModifier.ModuleModifierKeyword;
+import shaded.org.eclipse.jdt.core.dom.PrefixExpression.Operator;
+import shaded.org.eclipse.jdt.core.dom.PrimitiveType.Code;
+import shaded.org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 
 /**
  * Deals with conversion of Javac domain into JDT DOM domain
@@ -161,7 +157,7 @@ public class JavacConverter {
 	public Map<JCMethodInvocation, JCTree> invocationToSiteType = new HashMap<>();
 	final Set<JCDiagnostic> javadocDiagnostics = new HashSet<>();
 	private final List<JavadocConverter> javadocConverters = new ArrayList<>();
-	final List<org.eclipse.jdt.core.dom.Comment> notAttachedComments = new ArrayList<>();
+	final List<shaded.org.eclipse.jdt.core.dom.Comment> notAttachedComments = new ArrayList<>();
 	private Stack<JCTree> siteType = new Stack<>();
 	private boolean buildJavadoc;
 	private int focalPoint;
@@ -1225,7 +1221,7 @@ public class JavacConverter {
 			return;
 		Comment c = this.javacCompilationUnit.docComments.getComment(javac);
 		if(c != null && (c.getStyle() == Comment.CommentStyle.JAVADOC_BLOCK || c.getStyle() == CommentStyle.JAVADOC_LINE)) {
-			org.eclipse.jdt.core.dom.Comment comment = convert(c, javac);
+			shaded.org.eclipse.jdt.core.dom.Comment comment = convert(c, javac);
 			if( !(comment instanceof Javadoc)) {
 				return;
 			}
@@ -3415,20 +3411,20 @@ public class JavacConverter {
 		String rawTextSub = this.rawText.substring(startPos, endPos);
 		List<IExtendedModifier> res = new ArrayList<>();
 		ModifierKeyword[] ops = {
-				org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.PUBLIC_KEYWORD,
-				org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.PROTECTED_KEYWORD,
-				org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.PRIVATE_KEYWORD,
-				org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.STATIC_KEYWORD,
-				org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.ABSTRACT_KEYWORD,
-				org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.FINAL_KEYWORD,
-				org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.NATIVE_KEYWORD,
-				org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.SYNCHRONIZED_KEYWORD,
-				org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.TRANSIENT_KEYWORD,
-				org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.VOLATILE_KEYWORD,
-				org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.STRICTFP_KEYWORD,
-				org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.DEFAULT_KEYWORD,
-				org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.SEALED_KEYWORD,
-				org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.NON_SEALED_KEYWORD
+				shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.PUBLIC_KEYWORD,
+				shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.PROTECTED_KEYWORD,
+				shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.PRIVATE_KEYWORD,
+				shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.STATIC_KEYWORD,
+				shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.ABSTRACT_KEYWORD,
+				shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.FINAL_KEYWORD,
+				shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.NATIVE_KEYWORD,
+				shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.SYNCHRONIZED_KEYWORD,
+				shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.TRANSIENT_KEYWORD,
+				shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.VOLATILE_KEYWORD,
+				shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.STRICTFP_KEYWORD,
+				shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.DEFAULT_KEYWORD,
+				shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.SEALED_KEYWORD,
+				shaded.org.eclipse.jdt.core.dom.Modifier.ModifierKeyword.NON_SEALED_KEYWORD
 			};
 		for( int i = 0; i < ops.length; i++ ) {
 			ModifierKeyword k = ops[i];
@@ -3506,7 +3502,7 @@ public class JavacConverter {
 	}
 
 
-	public org.eclipse.jdt.core.dom.Comment convert(Comment javac, JCTree context) {
+	public shaded.org.eclipse.jdt.core.dom.Comment convert(Comment javac, JCTree context) {
 		CommentStyle style = javac.getStyle();
 		if ((style == CommentStyle.JAVADOC_BLOCK || style == CommentStyle.JAVADOC_LINE) && context != null) {
 			var docCommentTree = this.javacCompilationUnit.docComments.getCommentTree(context);
@@ -3526,7 +3522,7 @@ public class JavacConverter {
 				}
 			}
 		}
-		org.eclipse.jdt.core.dom.Comment jdt = switch (style) {
+		shaded.org.eclipse.jdt.core.dom.Comment jdt = switch (style) {
 			case LINE -> this.ast.newLineComment();
 			case BLOCK -> this.ast.newBlockComment();
 			case JAVADOC_BLOCK -> this.ast.newJavadoc();
@@ -3539,7 +3535,7 @@ public class JavacConverter {
 		return jdt;
 	}
 
-	public org.eclipse.jdt.core.dom.Comment convert(Comment javac, int pos, int endPos) {
+	public shaded.org.eclipse.jdt.core.dom.Comment convert(Comment javac, int pos, int endPos) {
 		// testBug113108b expects /// comments to be Line comments, not Javadoc comments
 		if (javac.getStyle() == CommentStyle.JAVADOC_BLOCK || javac.getStyle() == CommentStyle.JAVADOC_LINE) {
 			var parser = new shaded.com.sun.tools.javac.parser.DocCommentParser(ParserFactory.instance(this.context), Log.instance(this.context).currentSource(), javac);
@@ -3552,7 +3548,7 @@ public class JavacConverter {
 			this.javadocDiagnostics.addAll(javadocConverter.getDiagnostics());
 			return javadoc;
 		}
-		org.eclipse.jdt.core.dom.Comment jdt = switch (javac.getStyle()) {
+		shaded.org.eclipse.jdt.core.dom.Comment jdt = switch (javac.getStyle()) {
 			case LINE -> this.ast.newLineComment();
 			case BLOCK -> this.ast.newBlockComment();
 			case JAVADOC_BLOCK -> this.ast.newJavadoc();

@@ -17,12 +17,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.eclipse.jdt.core.compiler.IProblem;
-import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.jboss.tools.javac.ls.parser.bindings.JavacDOMParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import shaded.org.eclipse.jdt.core.compiler.IProblem;
+import shaded.org.eclipse.jdt.core.dom.AST;
+import shaded.org.eclipse.jdt.core.dom.CompilationUnit;
 
 /**
  * In-memory cache for parsed DOM trees.

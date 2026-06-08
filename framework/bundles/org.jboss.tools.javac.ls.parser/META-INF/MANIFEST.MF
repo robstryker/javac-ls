@@ -9,12 +9,13 @@ Bundle-ClassPath: .,
  lib/nb-javac-shaded-jdk-26-35.jar,
  lib/nb-javac-api-shaded-jdk-26-35.jar,
  lib/nnb-doclint-shaded-jdk-26-35-patch2.jar
-Require-Bundle: org.jboss.tools.jdt.core.dom
-Import-Package: org.eclipse.jdt.core,
- org.eclipse.jdt.internal.compiler.impl,
+Require-Bundle: org.jboss.tools.javac.ls.jdt.core.dom
+Import-Package: shaded.org.eclipse.jdt.core,
+ shaded.org.eclipse.jdt.core.dom,
+ org.jboss.tools.javac.ls.internal.compiler.impl,
  org.slf4j;version="1.7.10"
-Export-Package: org.eclipse.jdt.core.dom,
- org.jboss.tools.javac.ls.parser.bindings,
+Export-Package: org.jboss.tools.javac.ls.parser.bindings,
+ org.jboss.tools.javac.ls.parser.dom,
  org.jboss.tools.javac.ls.parser.dom.cache,
  org.jboss.tools.javac.ls.parser.problem.internal,
  shaded.com.sun.source.doctree,

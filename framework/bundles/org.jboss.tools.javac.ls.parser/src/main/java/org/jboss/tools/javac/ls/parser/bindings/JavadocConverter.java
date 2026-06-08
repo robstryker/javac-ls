@@ -10,11 +10,6 @@
  *******************************************************************************/
 package org.jboss.tools.javac.ls.parser.bindings;
 
-import org.eclipse.jdt.core.dom.*;
-import org.jboss.tools.javac.ls.parser.bindings.javadoc.JavacJdtMarkupParser;
-import org.jboss.tools.javac.ls.parser.bindings.javadoc.JavacJdtMarkupTag;
-import org.jboss.tools.javac.ls.parser.bindings.javadoc.JavacJdtMarkupTagAttribute;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -27,6 +22,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.jboss.tools.javac.ls.parser.bindings.javadoc.JavacJdtMarkupParser;
+import org.jboss.tools.javac.ls.parser.bindings.javadoc.JavacJdtMarkupTag;
+import org.jboss.tools.javac.ls.parser.bindings.javadoc.JavacJdtMarkupTagAttribute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +69,23 @@ import shaded.com.sun.tools.javac.tree.JCTree.JCArrayTypeTree;
 import shaded.com.sun.tools.javac.tree.TreeScanner;
 import shaded.com.sun.tools.javac.util.Convert;
 import shaded.com.sun.tools.javac.util.JCDiagnostic;
+import shaded.org.eclipse.jdt.core.dom.AST;
+import shaded.org.eclipse.jdt.core.dom.ASTNode;
+import shaded.org.eclipse.jdt.core.dom.ASTVisitor;
+import shaded.org.eclipse.jdt.core.dom.IDocElement;
+import shaded.org.eclipse.jdt.core.dom.JavaDocTextElement;
+import shaded.org.eclipse.jdt.core.dom.Javadoc;
+import shaded.org.eclipse.jdt.core.dom.MemberRef;
+import shaded.org.eclipse.jdt.core.dom.MethodRef;
+import shaded.org.eclipse.jdt.core.dom.MethodRefParameter;
+import shaded.org.eclipse.jdt.core.dom.ModuleQualifiedName;
+import shaded.org.eclipse.jdt.core.dom.Name;
+import shaded.org.eclipse.jdt.core.dom.QualifiedName;
+import shaded.org.eclipse.jdt.core.dom.SimpleName;
+import shaded.org.eclipse.jdt.core.dom.TagElement;
+import shaded.org.eclipse.jdt.core.dom.TagProperty;
+import shaded.org.eclipse.jdt.core.dom.TextElement;
+import shaded.org.eclipse.jdt.core.dom.Type;
 
 class JavadocConverter {
 

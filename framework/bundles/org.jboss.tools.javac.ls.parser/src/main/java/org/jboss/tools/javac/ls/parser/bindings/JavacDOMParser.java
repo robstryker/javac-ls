@@ -24,20 +24,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.eclipse.jdt.core.JavaCoreConstants;
-import org.eclipse.jdt.core.dom.*;
-import org.eclipse.jdt.core.dom.JavacBindingResolver;
-import org.eclipse.jdt.core.dom.JavacDomPackageAccessor;
-import org.eclipse.jdt.core.compiler.IProblem;
-import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
-import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
-import org.eclipse.jdt.internal.compiler.problem.DefaultProblem;
-import org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
+import org.jboss.tools.javac.ls.internal.compiler.impl.CompilerOptions;
+import org.jboss.tools.javac.ls.parser.bindings.resolve.JavacBindingResolver;
 import org.jboss.tools.javac.ls.parser.problem.internal.JavacDiagnosticProblemConverter;
 import org.jboss.tools.javac.ls.parser.problem.internal.JavacProblem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import shaded.com.sun.source.util.JavacTask;
 import shaded.com.sun.tools.javac.api.JavacTool;
 import shaded.com.sun.tools.javac.file.JavacFileManager;
 import shaded.com.sun.tools.javac.main.Option;
@@ -49,7 +43,6 @@ import shaded.com.sun.tools.javac.parser.Tokens.TokenKind;
 import shaded.com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
 import shaded.com.sun.tools.javac.util.Context;
 import shaded.com.sun.tools.javac.util.JCDiagnostic;
-import shaded.com.sun.tools.javac.util.Log;
 import shaded.com.sun.tools.javac.util.Names;
 import shaded.com.sun.tools.javac.util.Options;
 import shaded.javax.tools.Diagnostic;
@@ -59,7 +52,15 @@ import shaded.javax.tools.JavaFileObject;
 import shaded.javax.tools.SimpleJavaFileObject;
 import shaded.javax.tools.StandardLocation;
 import shaded.javax.tools.ToolProvider;
-import shaded.com.sun.source.util.JavacTask;
+import shaded.org.eclipse.jdt.core.JavaCoreConstants;
+import shaded.org.eclipse.jdt.core.compiler.IProblem;
+import shaded.org.eclipse.jdt.core.dom.AST;
+import shaded.org.eclipse.jdt.core.dom.ASTNode;
+import shaded.org.eclipse.jdt.core.dom.Comment;
+import shaded.org.eclipse.jdt.core.dom.CompilationUnit;
+import shaded.org.eclipse.jdt.core.dom.JavacDomPackageAccessor;
+import shaded.org.eclipse.jdt.internal.compiler.problem.DefaultProblem;
+import shaded.org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
 
 /**
  * Simplified parser for converting Java source code to Eclipse DOM AST using javac.
@@ -278,7 +279,7 @@ public class JavacDOMParser {
 		}
 
 		// Preview features
-		if (JavaCoreConstants.ENABLED.equals(compilerOptions.get("org.eclipse.jdt.core.compiler.problem.enablePreviewFeatures"))) {
+		if (JavaCoreConstants.ENABLED.equals(compilerOptions.get("shaded.org.eclipse.jdt.core.compiler.problem.enablePreviewFeatures"))) {
 			javacOptions.put(Option.PREVIEW, Boolean.toString(true));
 		}
 
@@ -316,7 +317,7 @@ public class JavacDOMParser {
 	 * Create AST with correct settings.
 	 */
 	private AST createAST(Map<String, String> options, int level, Context context) {
-		AST ast = AST.newAST(level, JavaCoreConstants.ENABLED.equals(options.get("org.eclipse.jdt.core.compiler.problem.enablePreviewFeatures")));
+		AST ast = AST.newAST(level, JavaCoreConstants.ENABLED.equals(options.get("shaded.org.eclipse.jdt.core.compiler.problem.enablePreviewFeatures")));
 		JavacDomPackageAccessor.setDefaultNodeFlag(ast, ASTNode.ORIGINAL);
 
 		// Note: Scanner configuration (sourceLevel, complianceLevel, previewEnabled)
@@ -338,7 +339,7 @@ public class JavacDOMParser {
 		JavacDiagnosticProblemConverter problemConverter = new JavacDiagnosticProblemConverter(compilerOptions, context);
 
 		// Collect problems for each compilation unit
-		Map<CompilationUnit, List<org.eclipse.jdt.core.compiler.IProblem>> unitProblems = new HashMap<>();
+		Map<CompilationUnit, List<shaded.org.eclipse.jdt.core.compiler.IProblem>> unitProblems = new HashMap<>();
 
 		return new DiagnosticListener<JavaFileObject>() {
 			@Override
@@ -368,8 +369,8 @@ public class JavacDOMParser {
 							}
 
 							// Set problems on unit after collection
-							List<org.eclipse.jdt.core.compiler.IProblem> allProblems = unitProblems.get(unit);
-							org.eclipse.jdt.core.compiler.IProblem[] problemArray = new org.eclipse.jdt.core.compiler.IProblem[allProblems.size()];
+							List<shaded.org.eclipse.jdt.core.compiler.IProblem> allProblems = unitProblems.get(unit);
+							shaded.org.eclipse.jdt.core.compiler.IProblem[] problemArray = new shaded.org.eclipse.jdt.core.compiler.IProblem[allProblems.size()];
 							for (int i = 0; i < allProblems.size(); i++) {
 								problemArray[i] = allProblems.get(i);
 							}
