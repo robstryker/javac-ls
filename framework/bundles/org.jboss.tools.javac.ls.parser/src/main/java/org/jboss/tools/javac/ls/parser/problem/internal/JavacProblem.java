@@ -11,7 +11,7 @@
 *     Microsoft Corporation - initial API and implementation
 *******************************************************************************/
 
-package org.eclipse.jdt.internal.javac.problem;
+package org.jboss.tools.javac.ls.parser.problem.internal;
 
 import org.eclipse.jdt.internal.compiler.problem.DefaultProblem;
 

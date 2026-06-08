@@ -8,9 +8,12 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
-package org.eclipse.jdt.internal.core.dom.javac;
+package org.jboss.tools.javac.ls.parser.bindings;
 
 import org.eclipse.jdt.core.dom.*;
+import org.jboss.tools.javac.ls.parser.bindings.javadoc.JavacJdtMarkupParser;
+import org.jboss.tools.javac.ls.parser.bindings.javadoc.JavacJdtMarkupTag;
+import org.jboss.tools.javac.ls.parser.bindings.javadoc.JavacJdtMarkupTagAttribute;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,9 +29,6 @@ import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.eclipse.jdt.internal.core.dom.javac.javadoc.JavacJdtMarkupParser;
-import org.eclipse.jdt.internal.core.dom.javac.javadoc.JavacJdtMarkupTag;
-import org.eclipse.jdt.internal.core.dom.javac.javadoc.JavacJdtMarkupTagAttribute;
 
 import shaded.com.sun.source.doctree.DocTree.Kind;
 import shaded.com.sun.source.util.DocTreePath;

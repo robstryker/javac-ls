@@ -11,7 +11,7 @@
  * Contributors:
  *     Red Hat Inc. - initial API and implementation
  *******************************************************************************/
-package org.eclipse.jdt.internal.core.dom.javac;
+package org.jboss.tools.javac.ls.parser.bindings;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;

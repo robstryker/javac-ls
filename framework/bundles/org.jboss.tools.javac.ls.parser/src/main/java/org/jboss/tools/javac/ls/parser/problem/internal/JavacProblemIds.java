@@ -10,7 +10,7 @@
 * Contributors:
 *     Red Hat Inc. - initial API and implementation
 *******************************************************************************/
-package org.eclipse.jdt.internal.javac.problem;
+package org.jboss.tools.javac.ls.parser.problem.internal;
 
 /**
  * Constant IDs for problems that don't have a corresponding diagnostic in ECJ.

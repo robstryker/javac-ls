@@ -27,6 +27,7 @@ import org.eclipse.jdt.core.dom.IVariableBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import org.jboss.tools.javac.ls.parser.bindings.JavacDOMParser;
 import org.junit.Test;
 
 /**
