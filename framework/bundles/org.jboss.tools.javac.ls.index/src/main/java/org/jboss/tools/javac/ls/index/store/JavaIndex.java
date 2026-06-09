@@ -1,0 +1,433 @@
+/*******************************************************************************
+ * Copyright (c) 2025 Red Hat, Inc. and others.
+ *
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License 2.0
+ * which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *******************************************************************************/
+package org.jboss.tools.javac.ls.index.store;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.jboss.tools.javac.ls.index.IndexChangeEvent;
+import org.jboss.tools.javac.ls.index.IndexChangeEvent.ChangeKind;
+import org.jboss.tools.javac.ls.index.IndexChangeListener;
+import org.jboss.tools.javac.ls.index.model.FieldDeclarationEntry;
+import org.jboss.tools.javac.ls.index.model.MethodDeclarationEntry;
+import org.jboss.tools.javac.ls.index.model.ReferenceEntry;
+import org.jboss.tools.javac.ls.index.model.TypeDeclarationEntry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * In-memory index of Java source code declarations and references.
+ * Thread-safe for concurrent queries and updates.
+ */
+public class JavaIndex {
+	private static final Logger LOG = LoggerFactory.getLogger(JavaIndex.class);
+
+	// Declarations (what's defined in the code)
+	private final Map<String, TypeDeclarationEntry> types = new ConcurrentHashMap<>();
+	private final Map<String, MethodDeclarationEntry> methods = new ConcurrentHashMap<>();
+	private final Map<String, FieldDeclarationEntry> fields = new ConcurrentHashMap<>();
+
+	// Type hierarchy (for fast queries)
+	private final Map<String, Set<String>> subtypes = new ConcurrentHashMap<>();
+	private final Map<String, Set<String>> implementors = new ConcurrentHashMap<>();
+
+	// References (where things are used)
+	private final Map<String, List<ReferenceEntry>> typeReferences = new ConcurrentHashMap<>();
+	private final Map<String, List<ReferenceEntry>> nameReferences = new ConcurrentHashMap<>();
+
+	// File tracking (for incremental updates)
+	private final Map<Path, Set<String>> fileToDeclaredTypes = new ConcurrentHashMap<>();
+	private final Map<Path, Long> fileTimestamps = new ConcurrentHashMap<>();
+
+	// Listeners
+	private final List<IndexChangeListener> listeners = new CopyOnWriteArrayList<>();
+
+	/**
+	 * Add a type declaration to the index.
+	 */
+	public void addType(TypeDeclarationEntry type) {
+		types.put(type.getQualifiedName(), type);
+
+		// Update hierarchy indexes
+		if (type.getSuperclass() != null && !type.getSuperclass().isEmpty()) {
+			subtypes.computeIfAbsent(type.getSuperclass(), k -> ConcurrentHashMap.newKeySet())
+					.add(type.getQualifiedName());
+		}
+
+		for (String iface : type.getInterfaces()) {
+			implementors.computeIfAbsent(iface, k -> ConcurrentHashMap.newKeySet())
+					.add(type.getQualifiedName());
+		}
+	}
+
+	/**
+	 * Add a method declaration to the index.
+	 */
+	public void addMethod(MethodDeclarationEntry method) {
+		methods.put(method.getSignatureKey(), method);
+	}
+
+	/**
+	 * Add a field declaration to the index.
+	 */
+	public void addField(FieldDeclarationEntry field) {
+		fields.put(field.getFieldKey(), field);
+	}
+
+	/**
+	 * Add a type reference to the index.
+	 */
+	public void addTypeReference(String qualifiedName, ReferenceEntry reference) {
+		typeReferences.computeIfAbsent(qualifiedName, k -> new ArrayList<>())
+				.add(reference);
+	}
+
+	/**
+	 * Add a name reference to the index (for find usages, rename refactoring).
+	 */
+	public void addNameReference(String name, ReferenceEntry reference) {
+		nameReferences.computeIfAbsent(name, k -> new ArrayList<>())
+				.add(reference);
+	}
+
+	/**
+	 * Track that a file declares certain types.
+	 */
+	public void trackFileDeclaredTypes(Path file, Set<String> declaredTypes) {
+		fileToDeclaredTypes.put(file, new HashSet<>(declaredTypes));
+		fileTimestamps.put(file, System.currentTimeMillis());
+	}
+
+	/**
+	 * Remove all index entries for a file (for incremental updates).
+	 */
+	public void removeFile(Path file) {
+		Set<String> oldTypes = fileToDeclaredTypes.remove(file);
+		if (oldTypes != null) {
+			for (String qname : oldTypes) {
+				TypeDeclarationEntry removed = types.remove(qname);
+				if (removed != null) {
+					// Remove from hierarchy indexes
+					if (removed.getSuperclass() != null) {
+						Set<String> subs = subtypes.get(removed.getSuperclass());
+						if (subs != null) {
+							subs.remove(qname);
+						}
+					}
+					for (String iface : removed.getInterfaces()) {
+						Set<String> impls = implementors.get(iface);
+						if (impls != null) {
+							impls.remove(qname);
+						}
+					}
+				}
+
+				// Remove methods and fields of this type
+				methods.entrySet().removeIf(e -> e.getValue().getDeclaringType().equals(qname));
+				fields.entrySet().removeIf(e -> e.getValue().getDeclaringType().equals(qname));
+
+				// Remove type references (references FROM this file)
+				// Note: We're not tracking which file references come from, so we can't selectively remove them
+				// This is a limitation - references are global
+			}
+		}
+		fileTimestamps.remove(file);
+		fireIndexChanged(new IndexChangeEvent(file, ChangeKind.FILE_REMOVED));
+	}
+
+	// ===== Query Methods =====
+
+	/**
+	 * Get type declaration by qualified name.
+	 */
+	public TypeDeclarationEntry getType(String qualifiedName) {
+		return types.get(qualifiedName);
+	}
+
+	/**
+	 * Get all type declarations.
+	 */
+	public Collection<TypeDeclarationEntry> getAllTypes() {
+		return Collections.unmodifiableCollection(types.values());
+	}
+
+	/**
+	 * Find direct subtypes of a type.
+	 */
+	public Collection<String> findDirectSubtypes(String typeName) {
+		Set<String> subs = subtypes.get(typeName);
+		return subs != null ? Collections.unmodifiableSet(subs) : Collections.emptySet();
+	}
+
+	/**
+	 * Find all subtypes of a type (transitive closure).
+	 */
+	public Set<String> findAllSubtypes(String typeName) {
+		Set<String> result = new HashSet<>();
+		Queue<String> queue = new LinkedList<>();
+		queue.add(typeName);
+
+		while (!queue.isEmpty()) {
+			String current = queue.poll();
+			Set<String> direct = subtypes.get(current);
+			if (direct != null) {
+				for (String sub : direct) {
+					if (result.add(sub)) {
+						queue.add(sub);
+					}
+				}
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * Find direct implementors of an interface.
+	 */
+	public Collection<String> findDirectImplementors(String interfaceName) {
+		Set<String> impls = implementors.get(interfaceName);
+		return impls != null ? Collections.unmodifiableSet(impls) : Collections.emptySet();
+	}
+
+	/**
+	 * Find all implementors of an interface (transitive).
+	 */
+	public Set<String> findAllImplementors(String interfaceName) {
+		Set<String> result = new HashSet<>();
+		Queue<String> queue = new LinkedList<>();
+		queue.add(interfaceName);
+
+		while (!queue.isEmpty()) {
+			String current = queue.poll();
+
+			// Add direct implementors
+			Set<String> direct = implementors.get(current);
+			if (direct != null) {
+				result.addAll(direct);
+			}
+
+			// Also check for interfaces that extend this interface
+			Set<String> extendingInterfaces = subtypes.get(current);
+			if (extendingInterfaces != null) {
+				for (String extending : extendingInterfaces) {
+					TypeDeclarationEntry type = types.get(extending);
+					if (type != null && type.getKind() == TypeDeclarationEntry.TypeKind.INTERFACE) {
+						if (!result.contains(extending) && !queue.contains(extending)) {
+							queue.add(extending);
+						}
+					}
+				}
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * Find usages of a type.
+	 */
+	public Collection<ReferenceEntry> findTypeUsages(String qualifiedName) {
+		List<ReferenceEntry> refs = typeReferences.get(qualifiedName);
+		return refs != null ? Collections.unmodifiableList(refs) : Collections.emptyList();
+	}
+
+	/**
+	 * Find all usages of a simple name (field, variable, method, etc.).
+	 */
+	public Collection<ReferenceEntry> findNameUsages(String name) {
+		List<ReferenceEntry> refs = nameReferences.get(name);
+		return refs != null ? Collections.unmodifiableList(refs) : Collections.emptyList();
+	}
+
+	/**
+	 * Get method declaration by signature key.
+	 */
+	public MethodDeclarationEntry getMethod(String signatureKey) {
+		return methods.get(signatureKey);
+	}
+
+	/**
+	 * Find all methods in a type.
+	 */
+	public Collection<MethodDeclarationEntry> findMethodsInType(String typeName) {
+		List<MethodDeclarationEntry> result = new ArrayList<>();
+		for (MethodDeclarationEntry method : methods.values()) {
+			if (method.getDeclaringType().equals(typeName)) {
+				result.add(method);
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * Get field declaration by field key.
+	 */
+	public FieldDeclarationEntry getField(String fieldKey) {
+		return fields.get(fieldKey);
+	}
+
+	/**
+	 * Find all fields in a type.
+	 */
+	public Collection<FieldDeclarationEntry> findFieldsInType(String typeName) {
+		List<FieldDeclarationEntry> result = new ArrayList<>();
+		for (FieldDeclarationEntry field : fields.values()) {
+			if (field.getDeclaringType().equals(typeName)) {
+				result.add(field);
+			}
+		}
+		return result;
+	}
+
+	// ===== Listener Management =====
+
+	public void addIndexChangeListener(IndexChangeListener listener) {
+		listeners.add(listener);
+	}
+
+	public void removeIndexChangeListener(IndexChangeListener listener) {
+		listeners.remove(listener);
+	}
+
+	public void fireIndexChanged(IndexChangeEvent event) {
+		for (IndexChangeListener listener : listeners) {
+			try {
+				listener.indexChanged(event);
+			} catch (Exception e) {
+				LOG.error("Error notifying index change listener", e);
+			}
+		}
+	}
+
+	// ===== Persistence =====
+
+	/**
+	 * Save index to persistent storage.
+	 */
+	public void saveTo(IndexPersistence persistence) throws IOException {
+		persistence.saveTypes(new HashMap<>(types));
+		persistence.saveSubtypes(convertToHashMap(subtypes));
+		persistence.saveImplementors(convertToHashMap(implementors));
+		persistence.saveTypeReferences(convertToListHashMap(typeReferences));
+		persistence.saveNameReferences(convertToListHashMap(nameReferences));
+		persistence.saveMethods(new HashMap<>(methods));
+		persistence.saveFields(new HashMap<>(fields));
+		persistence.saveFileToDeclaredTypes(new HashMap<>(fileToDeclaredTypes));
+	}
+
+	/**
+	 * Load index from persistent storage.
+	 */
+	public void loadFrom(IndexPersistence persistence) throws IOException {
+		types.clear();
+		subtypes.clear();
+		implementors.clear();
+		typeReferences.clear();
+		nameReferences.clear();
+		methods.clear();
+		fields.clear();
+		fileToDeclaredTypes.clear();
+
+		Map<String, TypeDeclarationEntry> loadedTypes = persistence.loadTypes();
+		if (loadedTypes != null) {
+			types.putAll(loadedTypes);
+		}
+
+		Map<String, Set<String>> loadedSubtypes = persistence.loadSubtypes();
+		if (loadedSubtypes != null) {
+			for (Map.Entry<String, Set<String>> entry : loadedSubtypes.entrySet()) {
+				subtypes.put(entry.getKey(), ConcurrentHashMap.newKeySet());
+				subtypes.get(entry.getKey()).addAll(entry.getValue());
+			}
+		}
+
+		Map<String, Set<String>> loadedImplementors = persistence.loadImplementors();
+		if (loadedImplementors != null) {
+			for (Map.Entry<String, Set<String>> entry : loadedImplementors.entrySet()) {
+				implementors.put(entry.getKey(), ConcurrentHashMap.newKeySet());
+				implementors.get(entry.getKey()).addAll(entry.getValue());
+			}
+		}
+
+		Map<String, List<ReferenceEntry>> loadedTypeRefs = persistence.loadTypeReferences();
+		if (loadedTypeRefs != null) {
+			typeReferences.putAll(loadedTypeRefs);
+		}
+
+		Map<String, List<ReferenceEntry>> loadedNameRefs = persistence.loadNameReferences();
+		if (loadedNameRefs != null) {
+			nameReferences.putAll(loadedNameRefs);
+		}
+
+		Map<String, MethodDeclarationEntry> loadedMethods = persistence.loadMethods();
+		if (loadedMethods != null) {
+			methods.putAll(loadedMethods);
+		}
+
+		Map<String, FieldDeclarationEntry> loadedFields = persistence.loadFields();
+		if (loadedFields != null) {
+			fields.putAll(loadedFields);
+		}
+
+		Map<Path, Set<String>> loadedFileToDeclaredTypes = persistence.loadFileToDeclaredTypes();
+		if (loadedFileToDeclaredTypes != null) {
+			fileToDeclaredTypes.putAll(loadedFileToDeclaredTypes);
+		}
+
+		LOG.info("Loaded index: {} types, {} methods, {} fields",
+				types.size(), methods.size(), fields.size());
+	}
+
+	private Map<String, Set<String>> convertToHashMap(Map<String, Set<String>> source) {
+		Map<String, Set<String>> result = new HashMap<>();
+		for (Map.Entry<String, Set<String>> entry : source.entrySet()) {
+			result.put(entry.getKey(), new HashSet<>(entry.getValue()));
+		}
+		return result;
+	}
+
+	private Map<String, List<ReferenceEntry>> convertToListHashMap(Map<String, List<ReferenceEntry>> source) {
+		Map<String, List<ReferenceEntry>> result = new HashMap<>();
+		for (Map.Entry<String, List<ReferenceEntry>> entry : source.entrySet()) {
+			result.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+		}
+		return result;
+	}
+
+	// ===== Statistics =====
+
+	public int getTypeCount() {
+		return types.size();
+	}
+
+	public int getMethodCount() {
+		return methods.size();
+	}
+
+	public int getFieldCount() {
+		return fields.size();
+	}
+
+	public int getIndexedFileCount() {
+		return fileToDeclaredTypes.size();
+	}
+}
