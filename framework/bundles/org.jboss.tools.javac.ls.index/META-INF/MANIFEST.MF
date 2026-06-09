@@ -1,0 +1,14 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Javac-LS Index
+Bundle-SymbolicName: org.jboss.tools.javac.ls.index
+Automatic-Module-Name: org.jboss.tools.javac.ls.index
+Bundle-Version: 0.0.1.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Require-Bundle: org.jboss.tools.javac.ls.jdt.core.dom,
+ org.jboss.tools.javac.ls.parser
+Import-Package: org.slf4j;version="1.7.10"
+Export-Package: org.jboss.tools.javac.ls.index,
+ org.jboss.tools.javac.ls.index.model,
+ org.jboss.tools.javac.ls.index.store,
+ org.jboss.tools.javac.ls.index.visitor
