@@ -32,6 +32,8 @@ import shaded.org.eclipse.jdt.core.dom.TypeDeclaration;
 import shaded.org.eclipse.jdt.core.dom.SingleVariableDeclaration;
 import shaded.org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import shaded.org.eclipse.jdt.core.dom.VariableDeclarationStatement;
+import shaded.org.eclipse.jdt.core.dom.Javadoc;
+import shaded.org.eclipse.jdt.core.dom.TagElement;
 
 /**
  * Tests for JavacDOMParser.
@@ -587,5 +589,156 @@ public class JavacDOMParserTest {
 			}
 		}
 		assertTrue("Should have @Deprecated annotation on oldMethod", foundDeprecatedOnMethod);
+	}
+
+	@Test
+	public void testJavadocStructureAndContent() {
+		String source = """
+			package com.example;
+
+			/**
+			 * A comprehensive test class for javadoc parsing.
+			 * This class demonstrates various javadoc features.
+			 *
+			 * @author Test Author
+			 * @version 1.0
+			 * @since 2025
+			 */
+			public class JavadocTest {
+				/**
+				 * The name field stores the user's name.
+				 * It should never be null.
+				 */
+				private String name;
+
+				/**
+				 * Processes data with the given parameters.
+				 * This method performs complex operations.
+				 *
+				 * @param input the input string to process
+				 * @param count the number of iterations
+				 * @param flags optional flags for processing
+				 * @return the processed result as a string
+				 * @throws IllegalArgumentException if input is null
+				 * @throws IllegalStateException if system is not initialized
+				 * @see #helper(String)
+				 * @deprecated Use {@link #processV2(String, int)} instead
+				 */
+				@Deprecated
+				public String process(String input, int count, Object... flags) throws IllegalArgumentException, IllegalStateException {
+					return helper(input);
+				}
+
+				/**
+				 * Helper method for internal use.
+				 *
+				 * @param data the data to process
+				 * @return processed data
+				 */
+				private String helper(String data) {
+					return data;
+				}
+			}
+			""";
+
+		JavacDOMParser parser = new JavacDOMParser();
+		CompilationUnit cu = parser.parse(source, "JavadocTest.java", null, AST.JLS21, null, true);
+
+		assertNotNull("CompilationUnit should not be null", cu);
+		TypeDeclaration type = (TypeDeclaration) cu.types().get(0);
+
+		// Test class javadoc
+		Javadoc classDoc = type.getJavadoc();
+		assertNotNull("Class should have javadoc", classDoc);
+		List<?> classTags = classDoc.tags();
+		assertNotNull("Class javadoc should have tags", classTags);
+		assertTrue("Class javadoc should have multiple tags", classTags.size() >= 3);
+
+		// Verify specific tags in class javadoc
+		boolean foundAuthor = false;
+		boolean foundVersion = false;
+		boolean foundSince = false;
+		for (Object tagObj : classTags) {
+			TagElement tag = (TagElement) tagObj;
+			String tagName = tag.getTagName();
+			if ("@author".equals(tagName)) {
+				foundAuthor = true;
+			} else if ("@version".equals(tagName)) {
+				foundVersion = true;
+			} else if ("@since".equals(tagName)) {
+				foundSince = true;
+			}
+		}
+		assertTrue("Should have @author tag", foundAuthor);
+		assertTrue("Should have @version tag", foundVersion);
+		assertTrue("Should have @since tag", foundSince);
+
+		// Test field javadoc
+		FieldDeclaration[] fields = type.getFields();
+		assertEquals("Should have 1 field", 1, fields.length);
+		Javadoc fieldDoc = fields[0].getJavadoc();
+		assertNotNull("Field should have javadoc", fieldDoc);
+
+		// Test method javadoc with comprehensive tags
+		MethodDeclaration[] methods = type.getMethods();
+		assertTrue("Should have at least 2 methods", methods.length >= 2);
+
+		// Find the 'process' method
+		MethodDeclaration processMethod = null;
+		for (MethodDeclaration method : methods) {
+			if ("process".equals(method.getName().getIdentifier())) {
+				processMethod = method;
+				break;
+			}
+		}
+		assertNotNull("process method should be found", processMethod);
+
+		Javadoc methodDoc = processMethod.getJavadoc();
+		assertNotNull("Method should have javadoc", methodDoc);
+		List<?> methodTags = methodDoc.tags();
+		assertNotNull("Method javadoc should have tags", methodTags);
+		assertTrue("Method javadoc should have multiple tags", methodTags.size() >= 5);
+
+		// Count specific tag types
+		int paramCount = 0;
+		int throwsCount = 0;
+		boolean foundReturn = false;
+		boolean foundSee = false;
+		boolean foundDeprecated = false;
+
+		for (Object tagObj : methodTags) {
+			TagElement tag = (TagElement) tagObj;
+			String tagName = tag.getTagName();
+			if ("@param".equals(tagName)) {
+				paramCount++;
+			} else if ("@return".equals(tagName)) {
+				foundReturn = true;
+			} else if ("@throws".equals(tagName)) {
+				throwsCount++;
+			} else if ("@see".equals(tagName)) {
+				foundSee = true;
+			} else if ("@deprecated".equals(tagName)) {
+				foundDeprecated = true;
+			}
+		}
+
+		assertEquals("Should have 3 @param tags", 3, paramCount);
+		assertTrue("Should have @return tag", foundReturn);
+		assertEquals("Should have 2 @throws tags", 2, throwsCount);
+		assertTrue("Should have @see tag", foundSee);
+		assertTrue("Should have @deprecated tag", foundDeprecated);
+
+		// Test helper method javadoc
+		MethodDeclaration helperMethod = null;
+		for (MethodDeclaration method : methods) {
+			if ("helper".equals(method.getName().getIdentifier())) {
+				helperMethod = method;
+				break;
+			}
+		}
+		assertNotNull("helper method should be found", helperMethod);
+
+		Javadoc helperDoc = helperMethod.getJavadoc();
+		assertNotNull("Helper method should have javadoc", helperDoc);
 	}
 }
