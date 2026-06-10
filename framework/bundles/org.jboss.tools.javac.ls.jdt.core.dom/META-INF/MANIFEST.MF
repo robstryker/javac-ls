@@ -7,12 +7,10 @@ Bundle-Version: 0.0.1.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Require-Bundle: org.jboss.tools.rsp.launching.java;visibility:=reexport
 Import-Package: org.slf4j;version="1.7.10"
-Export-Package: org.eclipse.jdt.internal.compiler.util,
- org.jboss.tools.javac.ls.internal.compiler.impl,
+Export-Package: org.jboss.tools.javac.ls.internal.compiler.impl,
  org.jboss.tools.javac.ls.internal.core.dom.util,
  shaded.org.eclipse.jdt.core,
  shaded.org.eclipse.jdt.core.compiler,
  shaded.org.eclipse.jdt.core.dom,
  shaded.org.eclipse.jdt.internal.compiler.classfmt,
- shaded.org.eclipse.jdt.internal.compiler.problem,
- shaded.org.eclipse.jdt.internal.core.dom.util
+ shaded.org.eclipse.jdt.internal.compiler.problem
