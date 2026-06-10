@@ -155,6 +155,27 @@ public class JavaIndex {
 		fireIndexChanged(new IndexChangeEvent(file, ChangeKind.FILE_REMOVED));
 	}
 
+	/**
+	 * Check if a file has been indexed.
+	 *
+	 * @param file the file path
+	 * @return true if the file is in the index
+	 */
+	public boolean isFileIndexed(Path file) {
+		return fileToDeclaredTypes.containsKey(file);
+	}
+
+	/**
+	 * Get the types declared in an indexed file.
+	 *
+	 * @param file the file path
+	 * @return set of qualified type names, or null if file not indexed
+	 */
+	public Set<String> getFileDeclaredTypes(Path file) {
+		Set<String> types = fileToDeclaredTypes.get(file);
+		return types != null ? new HashSet<>(types) : null;
+	}
+
 	// ===== Query Methods =====
 
 	/**

@@ -216,4 +216,44 @@ public class JavaIndexTest {
 		assertEquals("Method count should be 1", 1, index.getMethodCount());
 		assertEquals("Field count should be 1", 1, index.getFieldCount());
 	}
+
+	@Test
+	public void testFileTracking() {
+		Path file1 = Paths.get("/test/File1.java");
+		Path file2 = Paths.get("/test/File2.java");
+
+		// Initially, files should not be indexed
+		assertFalse("File1 should not be indexed yet", index.isFileIndexed(file1));
+		assertFalse("File2 should not be indexed yet", index.isFileIndexed(file2));
+		assertNull("File1 should have no declared types", index.getFileDeclaredTypes(file1));
+
+		// Track file1 with some types
+		Set<String> types1 = new java.util.HashSet<>();
+		types1.add("com.example.Class1");
+		types1.add("com.example.Class1$Inner");
+		index.trackFileDeclaredTypes(file1, types1);
+
+		assertTrue("File1 should be indexed", index.isFileIndexed(file1));
+		assertFalse("File2 should still not be indexed", index.isFileIndexed(file2));
+
+		Set<String> declaredTypes = index.getFileDeclaredTypes(file1);
+		assertNotNull("File1 should have declared types", declaredTypes);
+		assertEquals("File1 should have 2 types", 2, declaredTypes.size());
+		assertTrue("Should contain Class1", declaredTypes.contains("com.example.Class1"));
+		assertTrue("Should contain Inner", declaredTypes.contains("com.example.Class1$Inner"));
+
+		// Track file2
+		Set<String> types2 = new java.util.HashSet<>();
+		types2.add("com.example.Class2");
+		index.trackFileDeclaredTypes(file2, types2);
+
+		assertTrue("File2 should be indexed", index.isFileIndexed(file2));
+		assertEquals("Should have 2 indexed files", 2, index.getIndexedFileCount());
+
+		// Remove file1
+		index.removeFile(file1);
+		assertFalse("File1 should no longer be indexed", index.isFileIndexed(file1));
+		assertTrue("File2 should still be indexed", index.isFileIndexed(file2));
+		assertEquals("Should have 1 indexed file", 1, index.getIndexedFileCount());
+	}
 }
