@@ -17,5 +17,6 @@
     <module>org.jboss.tools.javac.ls.server.test</module>
     <module>org.jboss.tools.javac.ls.jdt.core.dom.test</module>
     <module>org.jboss.tools.javac.ls.index.test</module>
+    <module>org.jboss.tools.javac.ls.search.test</module>
   </modules>
 </project>

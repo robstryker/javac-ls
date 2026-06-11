@@ -1,0 +1,18 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Javac-LS Search
+Bundle-SymbolicName: org.jboss.tools.javac.ls.search
+Automatic-Module-Name: org.jboss.tools.javac.ls.search
+Bundle-Version: 0.0.1.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Require-Bundle: org.jboss.tools.javac.ls.index,
+ org.jboss.tools.javac.ls.parser,
+ org.jboss.tools.javac.ls.jdt.core.dom
+Export-Package: org.jboss.tools.javac.ls.search,
+ org.jboss.tools.javac.ls.search.engine,
+ org.jboss.tools.javac.ls.search.match,
+ org.jboss.tools.javac.ls.search.pattern,
+ org.jboss.tools.javac.ls.search.scope,
+ org.jboss.tools.javac.ls.search.visitor
+Import-Package: org.slf4j,
+ shaded.org.eclipse.jdt.core.dom
