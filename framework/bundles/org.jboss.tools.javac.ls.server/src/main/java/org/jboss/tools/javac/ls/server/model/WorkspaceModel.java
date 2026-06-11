@@ -92,8 +92,9 @@ public class WorkspaceModel {
 		load();
 		loadIndex();
 
-		// Ready for use (indexing will be done on-demand or in background)
-		initializationState = STATE_READY;
+		// Cache loaded - stay in LOADING_CACHE state
+		// Will transition to INDEXING when background indexing starts,
+		// or to READY if startBackgroundIndexing() is not called
 	}
 
 	/**
@@ -108,10 +109,10 @@ public class WorkspaceModel {
 	/**
 	 * Check if cache loading has completed.
 	 *
-	 * @return true if state has progressed past LOADING_CACHE
+	 * @return true if state is at LOADING_CACHE or beyond
 	 */
 	public boolean isCacheLoaded() {
-		return initializationState >= STATE_INDEXING;
+		return initializationState >= STATE_LOADING_CACHE;
 	}
 
 	/**
@@ -442,8 +443,8 @@ public class WorkspaceModel {
 	 * and READY when complete.
 	 */
 	public void startBackgroundIndexing() {
-		if (!isReady()) {
-			LOG.warn("Cannot start background indexing - workspace not ready (state: {})", initializationState);
+		if (initializationState != STATE_LOADING_CACHE) {
+			LOG.warn("Cannot start background indexing - expected LOADING_CACHE state but was: {}", initializationState);
 			return;
 		}
 
