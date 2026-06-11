@@ -28,6 +28,12 @@ public class JavacLsServerLauncher {
 
 	public static void main(String[] args) throws Exception {
 		JavacLsServerLauncher instance = new JavacLsServerLauncher(args[0]);
+
+		// Wait for READY state if configured
+		if (ServerFlags.isStartupWaitForReady()) {
+			instance.waitForReady();
+		}
+
 		instance.launch();
 		instance.addShutdownHook();
 		instance.shutdownOnInput();
@@ -78,9 +84,10 @@ public class JavacLsServerLauncher {
 		workspaceModel = new WorkspaceModel(workspaceDir);
 		LOG.info("Loaded workspace model with {} projects", workspaceModel.getProjectCount());
 
-		// Start background indexing with binding resolution
-		workspaceModel.startBackgroundIndexing();
-		LOG.info("Started background indexing with binding resolution");
+		// Start indexing with binding resolution (sync or async based on flag)
+		boolean sync = ServerFlags.isStartupSync();
+		workspaceModel.startIndexing(sync);
+		LOG.info("Started {} indexing with binding resolution", sync ? "synchronous" : "background");
 	}
 
 	public List<JavacLSClient> getClients() {
@@ -89,6 +96,28 @@ public class JavacLsServerLauncher {
 
 	public WorkspaceModel getWorkspaceModel() {
 		return workspaceModel;
+	}
+
+	/**
+	 * Wait for workspace to reach READY state.
+	 * Polls the initialization state and blocks until READY.
+	 */
+	private void waitForReady() {
+		LOG.info("Waiting for workspace to reach READY state before opening socket");
+		long startTime = System.currentTimeMillis();
+
+		while (!workspaceModel.isReady()) {
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				LOG.error("Interrupted while waiting for READY state", e);
+				Thread.currentThread().interrupt();
+				return;
+			}
+		}
+
+		long duration = System.currentTimeMillis() - startTime;
+		LOG.info("Workspace reached READY state after {}ms", duration);
 	}
 
 	public void launch() throws Exception {

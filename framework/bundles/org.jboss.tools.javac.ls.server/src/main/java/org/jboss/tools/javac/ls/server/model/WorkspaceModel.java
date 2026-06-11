@@ -437,28 +437,50 @@ public class WorkspaceModel {
 	}
 
 	/**
+	 * Start initialization that parses all files with bindings and re-indexes them.
+	 * Can run synchronously (blocking) or asynchronously (background) depending on sync parameter.
+	 *
+	 * @param sync if true, indexing happens on calling thread (blocks); if false, runs in background
+	 */
+	public void startIndexing(boolean sync) {
+		if (initializationState != STATE_LOADING_CACHE) {
+			LOG.warn("Cannot start indexing - expected LOADING_CACHE state but was: {}", initializationState);
+			return;
+		}
+
+		if (sync) {
+			LOG.info("Starting synchronous indexing with binding resolution");
+			try {
+				initializationState = STATE_INDEXING;
+				indexAllProjectsWithBindings();
+			} catch (Exception e) {
+				LOG.error("Synchronous indexing failed", e);
+			} finally {
+				initializationState = STATE_READY;
+			}
+		} else {
+			LOG.info("Starting background indexing with binding resolution");
+			backgroundExecutor.submit(() -> {
+				try {
+					initializationState = STATE_INDEXING;
+					indexAllProjectsWithBindings();
+				} catch (Exception e) {
+					LOG.error("Background indexing failed", e);
+				} finally {
+					initializationState = STATE_READY;
+				}
+			});
+		}
+	}
+
+	/**
 	 * Start background initialization that parses all files with bindings and re-indexes them.
 	 * This method returns immediately and the work is done asynchronously.
 	 * The initialization state will be set to INDEXING while work is in progress
 	 * and READY when complete.
 	 */
 	public void startBackgroundIndexing() {
-		if (initializationState != STATE_LOADING_CACHE) {
-			LOG.warn("Cannot start background indexing - expected LOADING_CACHE state but was: {}", initializationState);
-			return;
-		}
-
-		LOG.info("Starting background indexing with binding resolution");
-		backgroundExecutor.submit(() -> {
-			try {
-				initializationState = STATE_INDEXING;
-				indexAllProjectsWithBindings();
-			} catch (Exception e) {
-				LOG.error("Background indexing failed", e);
-			} finally {
-				initializationState = STATE_READY;
-			}
-		});
+		startIndexing(false);
 	}
 
 	/**

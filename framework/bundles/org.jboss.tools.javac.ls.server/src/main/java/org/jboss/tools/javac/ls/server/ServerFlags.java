@@ -18,6 +18,8 @@ public class ServerFlags {
 	public static final String LOG_LEVEL_FLAG = LoggingConstants.SYSPROP_LOG_LEVEL_FLAG;
 	public static final String SYSPROP_SERVER_PORT = "javacls.server.port";
 	public static final String SYSPROP_WORKSPACE_PATH = "javacls.workspace.path";
+	public static final String SYSPROP_STARTUP_SYNC = "javacls.startup.sync";
+	public static final String SYSPROP_STARTUP_WAIT_FOR_READY = "javacls.startup.waitForReady";
 	public static final int DEFAULT_PORT = 27511;
 
 	public static int getServerPort() {
@@ -38,6 +40,24 @@ public class ServerFlags {
 		return new File(getWorkspacePath());
 	}
 
+	/**
+	 * Get whether startup should be synchronous (blocking).
+	 *
+	 * @return true if indexing should happen synchronously on main thread, false for async background indexing
+	 */
+	public static boolean isStartupSync() {
+		return getBooleanSysprop(SYSPROP_STARTUP_SYNC, false);
+	}
+
+	/**
+	 * Get whether to wait for READY state before opening socket.
+	 *
+	 * @return true if socket should wait until READY state, false to open immediately
+	 */
+	public static boolean isStartupWaitForReady() {
+		return getBooleanSysprop(SYSPROP_STARTUP_WAIT_FOR_READY, false);
+	}
+
 	public static int getIntSysprop(String key, int def) {
 		int logLevel = def;
 		String logLevelTmp = System.getProperty(key);
@@ -49,5 +69,13 @@ public class ServerFlags {
 			}
 		}
 		return logLevel;
+	}
+
+	public static boolean getBooleanSysprop(String key, boolean def) {
+		String value = System.getProperty(key);
+		if (value != null) {
+			return Boolean.parseBoolean(value);
+		}
+		return def;
 	}
 }
