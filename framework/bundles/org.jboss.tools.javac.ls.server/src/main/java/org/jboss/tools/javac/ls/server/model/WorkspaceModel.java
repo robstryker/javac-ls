@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -22,11 +23,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import org.jboss.tools.javac.ls.index.store.JavaIndex;
 import org.jboss.tools.javac.ls.index.visitor.DOMToIndexVisitor;
 import org.jboss.tools.javac.ls.parser.bindings.JavacDOMParser;
+import org.jboss.tools.javac.ls.parser.dom.cache.DOMCache;
 import org.jboss.tools.javac.ls.server.index.JavaIndexCache;
 import org.jboss.tools.javac.ls.server.model.classpath.ClasspathCache;
 import org.jboss.tools.javac.ls.server.model.classpath.IJavacClasspathEntry;
@@ -63,6 +68,8 @@ public class WorkspaceModel {
 	private final ClasspathCache classpathCache;
 	private final ProjectClasspathDiscovery classpathDiscovery;
 	private final JavaIndexCache indexCache;
+	private final DOMCache domCache;
+	private final ExecutorService backgroundExecutor;
 	private volatile int initializationState = STATE_NOT_STARTED;
 
 	public WorkspaceModel(File workspaceDir) {
@@ -73,6 +80,12 @@ public class WorkspaceModel {
 		this.classpathCache = new ClasspathCache(workspaceDir);
 		this.classpathDiscovery = new ProjectClasspathDiscovery(classpathCache);
 		this.indexCache = new JavaIndexCache(new File(workspaceDir, INDEX_DIR).toPath());
+		this.domCache = new DOMCache();
+		this.backgroundExecutor = Executors.newSingleThreadExecutor(r -> {
+			Thread t = new Thread(r, "WorkspaceModel-Background");
+			t.setDaemon(true);
+			return t;
+		});
 
 		// Load cached data
 		initializationState = STATE_LOADING_CACHE;
@@ -386,6 +399,15 @@ public class WorkspaceModel {
 	}
 
 	/**
+	 * Get the DOM cache.
+	 *
+	 * @return the DOM cache
+	 */
+	public DOMCache getDOMCache() {
+		return domCache;
+	}
+
+	/**
 	 * Index all projects in the workspace.
 	 * Parses all .java files and populates the index.
 	 * This is a synchronous operation that acquires write lock on the index.
@@ -411,6 +433,156 @@ public class WorkspaceModel {
 			// Restore previous state or mark as READY if this was initialization
 			initializationState = (previousState == STATE_INDEXING) ? STATE_READY : previousState;
 		}
+	}
+
+	/**
+	 * Start background initialization that parses all files with bindings and re-indexes them.
+	 * This method returns immediately and the work is done asynchronously.
+	 * The initialization state will be set to INDEXING while work is in progress
+	 * and READY when complete.
+	 */
+	public void startBackgroundIndexing() {
+		if (!isReady()) {
+			LOG.warn("Cannot start background indexing - workspace not ready (state: {})", initializationState);
+			return;
+		}
+
+		LOG.info("Starting background indexing with binding resolution");
+		backgroundExecutor.submit(() -> {
+			try {
+				initializationState = STATE_INDEXING;
+				indexAllProjectsWithBindings();
+			} catch (Exception e) {
+				LOG.error("Background indexing failed", e);
+			} finally {
+				initializationState = STATE_READY;
+			}
+		});
+	}
+
+	/**
+	 * Index all projects with full binding resolution.
+	 * Parses all .java files with bindings, caches DOMs, and re-indexes.
+	 * This is a synchronous operation.
+	 */
+	private void indexAllProjectsWithBindings() {
+		LOG.info("Starting indexing with bindings for all projects");
+		long startTime = System.currentTimeMillis();
+		int totalFiles = 0;
+
+		for (WorkspaceProject project : getProjects()) {
+			int filesIndexed = indexProjectWithBindings(project.getName());
+			totalFiles += filesIndexed;
+		}
+
+		long duration = System.currentTimeMillis() - startTime;
+		LOG.info("Indexed {} files with bindings across {} projects in {}ms",
+				totalFiles, projects.size(), duration);
+	}
+
+	/**
+	 * Index a single project with full binding resolution.
+	 * Parses all .java files with bindings, caches DOMs, and re-indexes.
+	 *
+	 * @param projectName the project name
+	 * @return number of files indexed
+	 */
+	private int indexProjectWithBindings(String projectName) {
+		WorkspaceProject project = projects.get(projectName);
+		if (project == null) {
+			LOG.warn("Cannot index unknown project: {}", projectName);
+			return 0;
+		}
+
+		LOG.info("Indexing project with bindings: {}", projectName);
+		long startTime = System.currentTimeMillis();
+
+		File projectDir = new File(project.getPath());
+		if (!projectDir.exists() || !projectDir.isDirectory()) {
+			LOG.warn("Project directory does not exist: {}", project.getPath());
+			return 0;
+		}
+
+		// Find all .java files in the project
+		List<Path> javaFiles = findJavaFiles(projectDir.toPath());
+		if (javaFiles.isEmpty()) {
+			LOG.info("No Java files found in project: {}", projectName);
+			return 0;
+		}
+
+		// Get classpath for parsing (non-blocking to avoid deadlock)
+		ArrayList<IJavacClasspathEntry> classpathEntries = getProjectClasspathNonBlocking(projectName, true);
+		List<File> classpath = new ArrayList<>();
+		for (IJavacClasspathEntry entry : classpathEntries) {
+			if (entry.getPath() != null) {
+				classpath.add(new File(entry.getPath()));
+			}
+		}
+
+		// Parse and index each file with bindings
+		int filesIndexed = 0;
+
+		indexCache.lockWrite();
+		try {
+			JavaIndex index = indexCache.getIndex();
+
+			for (Path javaFile : javaFiles) {
+				try {
+					indexFileWithBindings(javaFile, classpath, index);
+					filesIndexed++;
+				} catch (Exception e) {
+					LOG.error("Failed to index file with bindings: {}", javaFile, e);
+				}
+			}
+
+			// Mark index as dirty after indexing
+			indexCache.markDirty();
+		} finally {
+			indexCache.unlockWrite();
+		}
+
+		long duration = System.currentTimeMillis() - startTime;
+		LOG.info("Indexed {} files with bindings in project '{}' in {}ms",
+				filesIndexed, projectName, duration);
+
+		return filesIndexed;
+	}
+
+	/**
+	 * Index a single Java file with full binding resolution.
+	 * Parses with bindings, caches the DOM, and populates the index.
+	 *
+	 * @param javaFile the Java file to index
+	 * @param classpath the classpath for parsing
+	 * @param index the index to populate
+	 */
+	private void indexFileWithBindings(Path javaFile, List<File> classpath, JavaIndex index) {
+		URI fileUri = javaFile.toUri();
+
+		// Parse with bindings and cache the result
+		CompilationUnit cu = domCache.getCompilationUnit(
+				fileUri,
+				classpath,
+				AST.JLS21,
+				null, // compiler options
+				true  // resolve bindings
+		);
+
+		if (cu == null) {
+			LOG.warn("Failed to parse file: {}", javaFile);
+			return;
+		}
+
+		// Remove old declarations for this file (incremental update)
+		index.removeFile(javaFile);
+
+		// Visit AST and populate index
+		DOMToIndexVisitor visitor = new DOMToIndexVisitor(index, javaFile);
+		cu.accept(visitor);
+		visitor.finishIndexing();
+
+		LOG.debug("Indexed file with bindings: {} ({} problems)",
+				javaFile, cu.getProblems() != null ? cu.getProblems().length : 0);
 	}
 
 	/**
@@ -542,6 +714,20 @@ public class WorkspaceModel {
 	 */
 	public void shutdown() {
 		LOG.info("Shutting down workspace model");
+
+		// Shutdown background executor
+		backgroundExecutor.shutdown();
+		try {
+			if (!backgroundExecutor.awaitTermination(10, TimeUnit.SECONDS)) {
+				LOG.warn("Background executor did not terminate in time, forcing shutdown");
+				backgroundExecutor.shutdownNow();
+			}
+		} catch (InterruptedException e) {
+			LOG.error("Interrupted while waiting for background executor to shut down", e);
+			backgroundExecutor.shutdownNow();
+			Thread.currentThread().interrupt();
+		}
+
 		// Save index before shutdown
 		indexCache.save();
 		classpathDiscovery.shutdown();
