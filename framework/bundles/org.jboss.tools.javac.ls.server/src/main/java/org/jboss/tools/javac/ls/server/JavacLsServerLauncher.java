@@ -74,9 +74,13 @@ public class JavacLsServerLauncher {
 			LOG.info("Using workspace directory: {}", workspacePath);
 		}
 
-		// Load workspace model
+		// Load workspace model (loads from cache only, no parsing)
 		workspaceModel = new WorkspaceModel(workspaceDir);
 		LOG.info("Loaded workspace model with {} projects", workspaceModel.getProjectCount());
+
+		// Start background indexing with binding resolution
+		workspaceModel.startBackgroundIndexing();
+		LOG.info("Started background indexing with binding resolution");
 	}
 
 	public List<JavacLSClient> getClients() {
