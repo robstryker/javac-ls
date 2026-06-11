@@ -50,6 +50,12 @@ public class WorkspaceModel {
 	private static final String WORKSPACE_FILE = "workspace.json";
 	private static final String INDEX_DIR = "index";
 
+	// Initialization state constants (ordered by progression)
+	public static final int STATE_NOT_STARTED = 0;
+	public static final int STATE_LOADING_CACHE = 1;
+	public static final int STATE_INDEXING = 2;
+	public static final int STATE_READY = 3;
+
 	private final File workspaceDir;
 	private final File workspaceFile;
 	private final Map<String, WorkspaceProject> projects;
@@ -57,6 +63,7 @@ public class WorkspaceModel {
 	private final ClasspathCache classpathCache;
 	private final ProjectClasspathDiscovery classpathDiscovery;
 	private final JavaIndexCache indexCache;
+	private volatile int initializationState = STATE_NOT_STARTED;
 
 	public WorkspaceModel(File workspaceDir) {
 		this.workspaceDir = workspaceDir;
@@ -66,8 +73,60 @@ public class WorkspaceModel {
 		this.classpathCache = new ClasspathCache(workspaceDir);
 		this.classpathDiscovery = new ProjectClasspathDiscovery(classpathCache);
 		this.indexCache = new JavaIndexCache(new File(workspaceDir, INDEX_DIR).toPath());
+
+		// Load cached data
+		initializationState = STATE_LOADING_CACHE;
 		load();
 		loadIndex();
+
+		// Ready for use (indexing will be done on-demand or in background)
+		initializationState = STATE_READY;
+	}
+
+	/**
+	 * Get the current initialization state.
+	 *
+	 * @return one of STATE_NOT_STARTED, STATE_LOADING_CACHE, STATE_INDEXING, STATE_READY
+	 */
+	public int getInitializationState() {
+		return initializationState;
+	}
+
+	/**
+	 * Check if cache loading has completed.
+	 *
+	 * @return true if state has progressed past LOADING_CACHE
+	 */
+	public boolean isCacheLoaded() {
+		return initializationState >= STATE_INDEXING;
+	}
+
+	/**
+	 * Check if currently indexing.
+	 *
+	 * @return true if in INDEXING state
+	 */
+	public boolean isIndexing() {
+		return initializationState == STATE_INDEXING;
+	}
+
+	/**
+	 * Check if initialization is complete and workspace is ready.
+	 *
+	 * @return true if in READY state
+	 */
+	public boolean isReady() {
+		return initializationState == STATE_READY;
+	}
+
+	/**
+	 * Set the initialization state (package-private for testing).
+	 *
+	 * @param state the new state
+	 */
+	void setInitializationState(int state) {
+		LOG.debug("Initialization state transition: {} -> {}", initializationState, state);
+		this.initializationState = state;
 	}
 
 	/**
@@ -332,18 +391,26 @@ public class WorkspaceModel {
 	 * This is a synchronous operation that acquires write lock on the index.
 	 */
 	public synchronized void indexAllProjects() {
-		LOG.info("Starting indexing of all projects in workspace");
-		long startTime = System.currentTimeMillis();
-		int totalFiles = 0;
+		int previousState = initializationState;
+		initializationState = STATE_INDEXING;
 
-		for (WorkspaceProject project : getProjects()) {
-			int filesIndexed = indexProject(project.getName());
-			totalFiles += filesIndexed;
+		try {
+			LOG.info("Starting indexing of all projects in workspace");
+			long startTime = System.currentTimeMillis();
+			int totalFiles = 0;
+
+			for (WorkspaceProject project : getProjects()) {
+				int filesIndexed = indexProject(project.getName());
+				totalFiles += filesIndexed;
+			}
+
+			long duration = System.currentTimeMillis() - startTime;
+			LOG.info("Indexed {} files across {} projects in {}ms",
+					totalFiles, projects.size(), duration);
+		} finally {
+			// Restore previous state or mark as READY if this was initialization
+			initializationState = (previousState == STATE_INDEXING) ? STATE_READY : previousState;
 		}
-
-		long duration = System.currentTimeMillis() - startTime;
-		LOG.info("Indexed {} files across {} projects in {}ms",
-				totalFiles, projects.size(), duration);
 	}
 
 	/**
