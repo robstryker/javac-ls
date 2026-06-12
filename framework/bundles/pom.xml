@@ -17,6 +17,7 @@
     <module>org.jboss.tools.javac.ls.jdt.core.dom</module>
     <module>org.jboss.tools.javac.ls.parser</module>
     <module>org.jboss.tools.javac.ls.index</module>
+    <module>org.jboss.tools.javac.ls.search</module>
     <module>org.jboss.tools.javac.ls.foundation.core</module>
     <module>org.jboss.tools.javac.ls.server</module>
   </modules>
